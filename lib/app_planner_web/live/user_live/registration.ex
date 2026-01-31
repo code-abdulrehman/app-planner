@@ -1,0 +1,96 @@
+defmodule AppPlannerWeb.UserLive.Registration do
+  use AppPlannerWeb, :live_view
+
+  alias AppPlanner.Accounts
+  alias AppPlanner.Accounts.User
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
+      <div class="mx-auto max-w-sm">
+        <div class="text-center">
+          <.header>
+            Register for an account
+            <:subtitle>
+              Already registered?
+              <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
+                Log in
+              </.link>
+              to your account now.
+            </:subtitle>
+          </.header>
+        </div>
+
+        <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
+          <.input
+            field={@form[:full_name]}
+            type="text"
+            label="Full name"
+            placeholder="Your name"
+            autocomplete="name"
+            phx-mounted={JS.focus()}
+          />
+          <.input
+            field={@form[:email]}
+            type="email"
+            label="Email"
+            autocomplete="username"
+            required
+          />
+          <.input
+            field={@form[:password]}
+            type="password"
+            label="Password"
+            autocomplete="new-password"
+            required
+          />
+
+          <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
+            Create an account
+          </.button>
+        </.form>
+      </div>
+    </Layouts.app>
+    """
+  end
+
+  @impl true
+  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
+      when not is_nil(user) do
+    {:ok, redirect(socket, to: AppPlannerWeb.UserAuth.signed_in_path(socket))}
+  end
+
+  def mount(_params, _session, socket) do
+    changeset = User.registration_changeset(%User{}, %{}, hash_password: false)
+
+    {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
+  end
+
+  @impl true
+  def handle_event("save", %{"user" => user_params}, socket) do
+    case Accounts.register_user(user_params) do
+      {:ok, user} ->
+        # Auto-confirm user
+        {:ok, _confirmed_user} = Accounts.confirm_user(user)
+
+        {:noreply,
+         socket
+         |> put_flash(:info, "Account created successfully! You can now log in with your email and password.")
+         |> push_navigate(to: ~p"/users/log-in")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign_form(socket, changeset)}
+    end
+  end
+
+  def handle_event("validate", %{"user" => user_params}, socket) do
+    changeset = User.registration_changeset(%User{}, user_params, hash_password: false)
+    {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
+  end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    form = to_form(changeset, as: "user")
+    assign(socket, form: form)
+  end
+end

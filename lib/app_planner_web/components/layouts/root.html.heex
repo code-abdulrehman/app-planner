@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="AppPlanner" suffix="">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <script>
+      (() => {
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "system");
+        }
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        
+        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      })();
+    </script>
+  </head>
+  <body class="bg-base-200/30 min-h-screen font-sans">
+    <div class="navbar bg-base-100 shadow-sm px-4 sm:px-6 lg:px-8 border-b">
+      <div class="navbar-start">
+        <a href="/" class="flex items-center gap-2 group">
+          <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-content font-bold shadow-soft transition-transform group-hover:rotate-12">
+        <.icon name="hero-cursor-arrow-ripple" class="w-6 h-6" />
+          </div>
+          <span class="text-xl font-black tracking-tighter">AppPlanner</span>
+        </a>
+        
+        <div class="ml-8 hidden md:flex items-center gap-1">
+          <%= if @current_scope && @current_scope.user do %>
+             <.link href={~p"/apps"} class="btn btn-ghost btn-sm font-bold uppercase tracking-widest text-[10px]">Projects</.link>
+          <% end %>
+        </div>
+      </div>
+      
+      <div class="navbar-end gap-4">
+        <Layouts.theme_toggle />
+        <ul class="flex items-center gap-4">
+          <%= if @current_scope && @current_scope.user do %>
+            <li class="dropdown dropdown-end">
+              <label tabindex="0" class="btn btn-ghost btn-circle avatar bg-primary/10 text-primary font-bold">
+                <%= if @current_scope.user.full_name && @current_scope.user.full_name != "" do %>
+                {String.at(@current_scope.user.full_name, 0) |> String.upcase()}
+              <% else %>
+                {String.at(@current_scope.user.email, 0) |> String.upcase()}
+              <% end %>
+              </label>
+              <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52 border">
+                <li class="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-widest border-b mb-2">Account</li>
+                <li><.link href={~p"/users/forgot-password"}>Settings</.link></li>
+                <%= if assigns[:is_super_admin] do %>
+                  <li><.link href={~p"/users/admin"}>Admin</.link></li>
+                <% end %>
+                <li><.link href={~p"/users/log-out"} method="delete">Sign Out</.link></li>
+              </ul>
+            </li>
+          <% else %>
+            <li><.link href={~p"/users/log-in"} class="text-sm font-bold">Log in</.link></li>
+            <li><.link href={~p"/users/register"} class="btn btn-primary btn-sm rounded-full">Register</.link></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+    <div class="">
+      {@inner_content}
+    </div>
+  </body>
+</html>

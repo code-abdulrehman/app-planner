@@ -1,0 +1,148 @@
+<div class="relative isolate overflow-hidden" id="home-hero">
+  <canvas id="hero-lights" class="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true"></canvas>
+  <div class="hero-lights-orb hero-lights-orb-1"></div>
+  <div class="hero-lights-orb hero-lights-orb-2"></div>
+  <div class="hero-lights-orb hero-lights-orb-3"></div>
+  <div class="relative z-10 px-6 py-24 sm:py-32 lg:px-8">
+    <div class="mx-auto max-w-2xl text-center">
+      <div class="flex justify-center mb-8">
+        <div class="w-24 h-24 rounded-3xl bg-base-100/80 backdrop-blur-sm flex items-center justify-center text-primary shadow-xl border ">
+           <.icon name="hero-cursor-arrow-ripple" class="w-12 h-12" />
+        </div>
+      </div>
+      <h1 class="text-4xl font-bold tracking-tight sm:text-6xl">App Planner</h1>
+      <p class="mt-6 text-lg leading-8 text-gray-500">
+        Organize your software projects, track features, and collaborate on software architecture in one place.
+      </p>
+      <div class="mt-10 flex items-center justify-center gap-x-6">
+        <%= if @current_scope && @current_scope.user do %>
+          <.link
+            href={~p"/apps"}
+            class="btn btn-primary btn-lg px-8 py-3 rounded-full text-lg font-bold shadow-lg hover:shadow-primary/50 transition-all"
+          >
+            Launch My Apps
+          </.link>
+        <% else %>
+          <.link
+            href={~p"/users/register"}
+            class="btn btn-primary btn-lg px-8 py-3 rounded-full text-lg font-bold shadow-lg"
+          >
+            Get Started Free
+          </.link>
+          <.link
+            href={~p"/users/log-in"}
+            class="text-sm font-semibold leading-6 text-gray-900"
+          >
+            Sign In <span aria-hidden="true">→</span>
+          </.link>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="mx-auto max-w-7xl px-6 lg:px-8 pb-32">
+    <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="p-8 border rounded-3xl bg-base-100/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow z-10">
+        <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 mb-4">
+          <.icon name="hero-rectangle-stack" class="w-6 h-6" />
+        </div>
+        <h3 class="font-bold text-xl mb-2">Project Hierarchy</h3>
+        <p class="text-sm text-gray-500">Nesting apps within apps. Organize complex monorepos or microservices with ease.</p>
+      </div>
+      
+      <div class="p-8 border rounded-3xl bg-base-100/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow z-10">  
+        <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-600 mb-4">
+          <.icon name="hero-check-badge" class="w-6 h-6" />
+        </div>
+        <h3 class="font-bold text-xl mb-2">Feature Tracking</h3>
+        <p class="text-sm text-gray-500">Track implementation details, pros/cons, and time estimates for every feature.</p>
+      </div>
+      
+      <div class="p-8 border rounded-3xl bg-base-100/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow z-10">
+        <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 mb-4">
+          <.icon name="hero-tag" class="w-6 h-6" />
+        </div>
+        <h3 class="font-bold text-xl mb-2">Custom Labels</h3>
+        <p class="text-sm text-gray-500">Categorize your projects and features with fully customizable, color-coded labels.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var canvas = document.getElementById("hero-lights");
+      if (!canvas) return;
+      var ctx = canvas.getContext("2d");
+      var w = 0, h = 0;
+      var lights = [];
+      var tick = 0;
+      function resize() {
+        var wrap = document.getElementById("home-hero");
+        if (!wrap) return;
+        var rect = wrap.getBoundingClientRect();
+        w = canvas.width = rect.width;
+        h = canvas.height = Math.max(rect.height, 420);
+      }
+      function initLights() {
+        lights = [];
+        for (var i = 0; i < 6; i++) {
+          lights.push({
+            x: Math.random() * (w || 800),
+            y: Math.random() * (h || 420),
+            r: 220 + Math.random() * 260,
+            vx: (Math.random() - 0.5) * 0.8,
+            vy: (Math.random() - 0.5) * 0.6,
+            hue: 220 + Math.random() * 80
+          });
+        }
+      }
+      function draw() {
+        if (!ctx || w <= 0 || h <= 0) return;
+        ctx.clearRect(0, 0, w, h);
+        tick += 0.01;
+        lights.forEach(function(l) {
+          l.x += l.vx;
+          l.y += l.vy;
+          if (l.x < -l.r) l.x = w + l.r;
+          if (l.x > w + l.r) l.x = -l.r;
+          if (l.y < -l.r) l.y = h + l.r;
+          if (l.y > h + l.r) l.y = -l.r;
+          var g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+          var a = 0.28 + 0.14 * Math.sin(tick + l.x * 0.008);
+          g.addColorStop(0, "hsla(" + l.hue + ", 65%, 75%, " + a + ")");
+          g.addColorStop(0.5, "hsla(" + l.hue + ", 55%, 55%, " + (a * 0.4) + ")");
+          g.addColorStop(0.85, "hsla(" + l.hue + ", 45%, 45%, 0.06)");
+          g.addColorStop(1, "hsla(" + l.hue + ", 40%, 40%, 0)");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, w, h);
+        });
+        requestAnimationFrame(draw);
+      }
+      function start() {
+        resize();
+        initLights();
+        draw();
+      }
+      start();
+      setTimeout(start, 100);
+      window.addEventListener("resize", function() { resize(); initLights(); });
+    })();
+  </script>
+  <footer class="border-t border-base-200 mt-16 py-8">
+    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-base-content/60">
+        <span>© <%= DateTime.utc_now().year %> App Planner. All rights reserved.</span>
+        <div class="flex gap-6">
+          <.link href={~p"/"} class="hover:text-base-content transition-colors">Home</.link>
+          <%= if @current_scope && @current_scope.user do %>
+            <.link href={~p"/apps"} class="hover:text-base-content transition-colors">Projects</.link>
+            <.link href={~p"/users/forgot-password"} class="hover:text-base-content transition-colors">Settings</.link>
+          <% else %>
+            <.link href={~p"/users/log-in"} class="hover:text-base-content transition-colors">Sign In</.link>
+            <.link href={~p"/users/register"} class="hover:text-base-content transition-colors">Register</.link>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>
