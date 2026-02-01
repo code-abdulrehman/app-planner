@@ -30,6 +30,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
   # For :new use form value so phx-change doesn't clear other fields; for :edit use edit_value
   defp input_display_value(form, feature, field, :edit), do: edit_value(form, feature, field)
+
   defp input_display_value(form, _feature, field, :new) do
     case Phoenix.HTML.Form.input_value(form, field) do
       %Date{} = d -> Date.to_iso8601(d)
@@ -88,7 +89,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
               <.input field={@form[:pr_link]} type="text" placeholder="https://github.com/... or PR link" value={input_display_value(@form, @feature, :pr_link, @live_action)} class="input input-bordered w-full" />
             </div>
             <div class="form-control">
-                <label class="label"><span class="label-text font-medium">User flow</span></label>
+                <label class="label"><span class="label-text font-medium">User flow <span class="text-[10px] text-base-content/50 ml-1 font-normal">(Markdown supported)</span></span></label>
                 <.input field={@form[:how_to_add]} type="textarea" placeholder="..." value={input_display_value(@form, @feature, :how_to_add, @live_action)} class="textarea textarea-bordered h-20 w-full" />
               </div>
           </div>
@@ -117,11 +118,11 @@ defmodule AppPlannerWeb.FeatureLive.Form do
               </div>
 
              <div class="form-control">
-               <label class="label"><span class="label-text font-medium">Rationale</span></label>
+               <label class="label"><span class="label-text font-medium">Rationale <span class="text-[10px] text-base-content/50 ml-1 font-normal">(Markdown supported)</span></span></label>
                <.input field={@form[:why_need]} type="textarea" placeholder="Why add this?" value={input_display_value(@form, @feature, :why_need, @live_action)} class="textarea textarea-bordered h-24 w-full" />
              </div>
              <div class="form-control">
-               <label class="label"><span class="label-text font-medium">Description</span></label>
+               <label class="label"><span class="label-text font-medium">Description <span class="text-[10px] text-base-content/50 ml-1 font-normal">(Markdown supported)</span></span></label>
                <.input field={@form[:description]} type="textarea" placeholder="Details..." value={input_display_value(@form, @feature, :description, @live_action)} class="textarea textarea-bordered h-36 w-full" />
              </div>
           </div>
@@ -130,7 +131,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
            <div class="space-y-6">
               <div class="form-control">
-                <label class="label"><span class="label-text font-medium">Strategy</span></label>
+                <label class="label"><span class="label-text font-medium">Strategy <span class="text-[10px] text-base-content/50 ml-1 font-normal">(Markdown supported)</span></span></label>
                 <.input field={@form[:how_to_implement]} type="textarea" placeholder="..." value={input_display_value(@form, @feature, :how_to_implement, @live_action)} class="textarea textarea-bordered h-20 w-full" />
               </div>
               <div class="form-control pt-6 border-t">
@@ -151,11 +152,11 @@ defmodule AppPlannerWeb.FeatureLive.Form do
            </div>
            <div class="space-y-6">
               <div class="form-control">
-                <label class="label"><span class="label-text font-medium">Pros</span></label>
+                <label class="label"><span class="label-text font-medium">Pros <span class="text-[10px] text-base-content/50 ml-1 font-normal">(Markdown supported)</span></span></label>
                 <.input field={@form[:pros]} type="textarea" placeholder="..." value={input_display_value(@form, @feature, :pros, @live_action)} class="textarea textarea-bordered h-20 w-full" />
               </div>
               <div class="form-control">
-                <label class="label"><span class="label-text font-medium">Cons</span></label>
+                <label class="label"><span class="label-text font-medium">Cons <span class="text-[10px] text-base-content/50 ml-1 font-normal">(Markdown supported)</span></span></label>
                 <.input field={@form[:cons]} type="textarea" placeholder="..." value={input_display_value(@form, @feature, :cons, @live_action)} class="textarea textarea-bordered h-20 w-full" />
               </div>
            </div>
@@ -174,6 +175,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   @impl true
   def mount(params, _session, socket) do
     params = normalize_route_params(params)
+
     {:ok,
      socket
      |> assign(:return_to, return_to(params["return_to"]))
@@ -186,6 +188,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   def handle_params(params, _uri, socket) do
     params = normalize_route_params(params)
     id = params["id"]
+
     case {socket.assigns.live_action, id} do
       {:edit, id} when is_binary(id) and id != "" ->
         {:noreply, apply_action(socket, :edit, params)}
@@ -248,6 +251,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
     # Pre-fill form with existing feature data so all fields show old values
     feature_params = feature_to_form_params(feature)
+
     form =
       feature
       |> Planner.change_feature(feature_params)
@@ -265,11 +269,14 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
   defp apply_action(socket, :new, params) do
     user = socket.assigns.current_scope.user
-    app_id = case params["app_id"] do
-      nil -> nil
-      id when is_binary(id) -> String.to_integer(id)
-      id when is_integer(id) -> id
-    end
+
+    app_id =
+      case params["app_id"] do
+        nil -> nil
+        id when is_binary(id) -> String.to_integer(id)
+        id when is_integer(id) -> id
+      end
+
     feature = %Feature{app_id: app_id}
 
     if app_id != nil do
@@ -278,6 +285,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
           socket
           |> put_flash(:error, "This project is no longer available.")
           |> push_navigate(to: ~p"/apps")
+
         app ->
           feature = %{feature | app: app}
           apply_action_new_feature(socket, feature, user)
@@ -289,6 +297,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
   defp apply_action_new_feature(socket, feature, user) do
     apps = Planner.list_apps(user) |> Enum.filter(&Planner.can_edit_app?(&1, user))
+
     socket
     |> assign(:page_title, "New Feature")
     |> assign(:feature, feature)
@@ -315,11 +324,13 @@ defmodule AppPlannerWeb.FeatureLive.Form do
       "status" => to_string_or_nil(feature.status) || "Planned",
       "app_id" => feature.app_id
     }
+
     date_param =
       case feature.implementation_date do
         %Date{} = d -> %{"implementation_date" => Date.to_iso8601(d)}
         _ -> %{}
       end
+
     Map.merge(base, date_param)
   end
 
@@ -329,10 +340,12 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   # Merge with last known params; only update the field in _target so unfocused (empty) inputs don't overwrite
   defp merge_feature_params(socket, incoming, target) do
     base = socket.assigns[:last_feature_params] || feature_to_form_params(socket.assigns.feature)
+
     case target_field(target) do
       field when is_binary(field) ->
         # Only update the field that triggered phx-change; keep all others from base
         Map.put(base, field, Map.get(incoming, field, base[field]))
+
       nil ->
         # _target missing or unknown: merge but never overwrite with empty (unfocused fields send "")
         Map.merge(base, incoming, fn _k, base_val, in_val ->
@@ -343,12 +356,14 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
   # _target can be ["feature", "title"] (list) or "feature[title]" (string from meta)
   defp target_field(["feature", field]) when is_binary(field), do: field
+
   defp target_field("feature[" <> rest) do
     case String.split(rest, "]", parts: 2) do
       [field, _] -> field
       _ -> nil
     end
   end
+
   defp target_field(_), do: nil
 
   defp present?(nil), do: false
@@ -360,12 +375,14 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   defp normalize_app_id(nil), do: nil
   defp normalize_app_id(""), do: nil
   defp normalize_app_id(id) when is_integer(id), do: id
+
   defp normalize_app_id(id) when is_binary(id) do
     case Integer.parse(id) do
       {i, _} -> i
       :error -> nil
     end
   end
+
   defp normalize_app_id(_), do: nil
 
   @impl true
@@ -375,9 +392,19 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     target = params["_target"] || []
     # Only update the field that triggered phx-change so empty unfocused fields don't overwrite
     feature_params = merge_feature_params(socket, incoming, target)
-    feature_params = if socket.assigns[:icon_preview], do: Map.put(feature_params, "icon", socket.assigns.icon_preview), else: feature_params
+
+    feature_params =
+      if socket.assigns[:icon_preview],
+        do: Map.put(feature_params, "icon", socket.assigns.icon_preview),
+        else: feature_params
+
     raw_custom = params["feature_custom_fields"] || %{}
-    feature_custom_fields = if map_size(raw_custom) > 0, do: parse_custom_fields(raw_custom), else: socket.assigns.feature_custom_fields
+
+    feature_custom_fields =
+      if map_size(raw_custom) > 0,
+        do: parse_custom_fields(raw_custom),
+        else: socket.assigns.feature_custom_fields
+
     feature_params = put_custom_fields_map(feature_params, feature_custom_fields)
     changeset = Planner.change_feature(socket.assigns.feature, feature_params)
     icon_search = Map.get(params, "icon_search_query", socket.assigns.icon_search)
@@ -392,7 +419,11 @@ defmodule AppPlannerWeb.FeatureLive.Form do
       if app_id_int && (feature.app_id || 0) != app_id_int do
         case Planner.get_app(app_id_int, user) do
           nil ->
-            {feature, socket |> put_flash(:error, "This project is no longer available.") |> push_navigate(to: ~p"/apps")}
+            {feature,
+             socket
+             |> put_flash(:error, "This project is no longer available.")
+             |> push_navigate(to: ~p"/apps")}
+
           app ->
             {%{feature | app_id: app_id_int, app: app}, nil}
         end
@@ -404,13 +435,13 @@ defmodule AppPlannerWeb.FeatureLive.Form do
       {:noreply, redirect_socket}
     else
       {:noreply,
-     socket
-     |> assign(:feature, feature)
-     |> assign(:feature_custom_fields, feature_custom_fields)
-     |> assign(:icon_search, icon_search)
-     |> assign(:icon_preview, feature_params["icon"] || socket.assigns[:icon_preview])
-     |> assign(:last_feature_params, feature_params)
-     |> assign(:form, to_form(changeset, action: :validate))}
+       socket
+       |> assign(:feature, feature)
+       |> assign(:feature_custom_fields, feature_custom_fields)
+       |> assign(:icon_search, icon_search)
+       |> assign(:icon_preview, feature_params["icon"] || socket.assigns[:icon_preview])
+       |> assign(:last_feature_params, feature_params)
+       |> assign(:form, to_form(changeset, action: :validate))}
     end
   end
 
@@ -421,6 +452,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     filtered =
       if search_lower == "" do
         top = Enum.take(all_icons, 12)
+
         if socket.assigns.icon_preview && socket.assigns.icon_preview not in top do
           [socket.assigns.icon_preview | top] |> Enum.uniq()
         else
@@ -428,12 +460,15 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         end
       else
         matches = all_icons |> Enum.filter(&String.contains?(&1, search_lower))
+
         results =
-          if socket.assigns.icon_preview && String.contains?(socket.assigns.icon_preview, search_lower) do
+          if socket.assigns.icon_preview &&
+               String.contains?(socket.assigns.icon_preview, search_lower) do
             [socket.assigns.icon_preview | matches] |> Enum.uniq()
           else
             matches
           end
+
         Enum.take(results, 30)
       end
 
@@ -459,7 +494,12 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     # Merge with last_feature_params so unfocused (empty) fields from form submit don't wipe typed data
     incoming = params["feature"] || %{}
     feature_params = merge_feature_params(socket, incoming, [])
-    feature_params = if socket.assigns[:icon_preview], do: Map.put(feature_params, "icon", socket.assigns.icon_preview), else: feature_params
+
+    feature_params =
+      if socket.assigns[:icon_preview],
+        do: Map.put(feature_params, "icon", socket.assigns.icon_preview),
+        else: feature_params
+
     custom_fields = parse_custom_fields(params["feature_custom_fields"] || %{})
     feature_params = put_custom_fields_map(feature_params, custom_fields)
     save_feature(socket, socket.assigns.live_action, feature_params)
@@ -467,6 +507,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
   defp save_feature(socket, :edit, feature_params) do
     user = socket.assigns.current_scope.user
+
     case Planner.update_feature(socket.assigns.feature, feature_params, user) do
       {:ok, feature} ->
         {:noreply,
@@ -535,6 +576,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
       Enum.reduce(list, %{}, fn %{"key" => k, "value" => v}, acc ->
         if is_binary(k) && String.trim(k) != "", do: Map.put(acc, String.trim(k), v), else: acc
       end)
+
     Map.put(feature_params, "custom_fields", map)
   end
 end

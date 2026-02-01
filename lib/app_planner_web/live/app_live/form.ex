@@ -19,6 +19,7 @@ defmodule AppPlannerWeb.AppLive.Form do
 
   # For :new use form value so phx-change doesn't clear other fields; for :edit use edit_value
   defp input_display_value(form, app, field, :edit), do: edit_value(form, app, field)
+
   defp input_display_value(form, _app, field, :new) do
     case Phoenix.HTML.Form.input_value(form, field) do
       v when v in [nil, ""] -> ""
@@ -28,6 +29,7 @@ defmodule AppPlannerWeb.AppLive.Form do
 
   defp filtered_labels_for_modal(labels, search) when is_binary(search) do
     q = String.downcase(String.trim(search))
+
     if q == "" do
       labels
     else
@@ -39,8 +41,11 @@ defmodule AppPlannerWeb.AppLive.Form do
 
   defp changeset_constraint?(changeset, constraint_name) do
     Enum.any?(changeset.errors, fn
-      {_field, {_, opts}} when is_list(opts) -> Keyword.get(opts, :constraint_name) == constraint_name
-      _ -> false
+      {_field, {_, opts}} when is_list(opts) ->
+        Keyword.get(opts, :constraint_name) == constraint_name
+
+      _ ->
+        false
     end)
   end
 
@@ -86,7 +91,7 @@ defmodule AppPlannerWeb.AppLive.Form do
             </div>
 
             <div class="form-control">
-              <label class="label"><span class="label-text font-medium">Description</span></label>
+              <label class="label"><span class="label-text font-medium">Description <span class="text-[10px] text-base-content/50 ml-1 font-normal">(Markdown supported)</span></span></label>
               <.input field={@form[:description]} type="textarea" placeholder="Project details..." value={input_display_value(@form, @app, :description, @live_action)} class="textarea textarea-bordered h-32 w-full" />
             </div>
 
@@ -328,7 +333,9 @@ defmodule AppPlannerWeb.AppLive.Form do
   defp apply_action_edit_app(socket, params, user, app) do
     categories = Planner.list_categories()
     category_options = Enum.map(categories, &{&1.name, &1.name}) ++ [{"Other", "__other__"}]
-    socket = socket |> assign(:categories, categories) |> assign(:category_options, category_options)
+
+    socket =
+      socket |> assign(:categories, categories) |> assign(:category_options, category_options)
 
     custom_fields =
       Enum.map(app.custom_fields || %{}, fn {k, v} ->
@@ -336,9 +343,17 @@ defmodule AppPlannerWeb.AppLive.Form do
       end)
 
     selected_label_ids = Enum.map(app.labels, & &1.id)
-    category_other_edit = app.category && !Enum.any?(categories, fn c -> c.name == app.category end)
+
+    category_other_edit =
+      app.category && !Enum.any?(categories, fn c -> c.name == app.category end)
+
     initial_params = app_to_form_params(app)
-    initial_params = if category_other_edit, do: Map.put(initial_params, "category", "__other__"), else: initial_params
+
+    initial_params =
+      if category_other_edit,
+        do: Map.put(initial_params, "category", "__other__"),
+        else: initial_params
+
     form =
       app
       |> Planner.change_app(initial_params)
@@ -416,9 +431,20 @@ defmodule AppPlannerWeb.AppLive.Form do
     app_params = merge_app_params(socket, incoming, target)
     category = app_params["category"]
     category_other = category == "__other__"
-    category_custom_value = app_params["category_custom"] || socket.assigns[:category_custom_value] || ""
-    app_params = if category_other && category_custom_value != "", do: Map.put(app_params, "category", String.trim(category_custom_value)), else: app_params
-    app_params = if socket.assigns[:icon_preview], do: Map.put(app_params, "icon", socket.assigns.icon_preview), else: app_params
+
+    category_custom_value =
+      app_params["category_custom"] || socket.assigns[:category_custom_value] || ""
+
+    app_params =
+      if category_other && category_custom_value != "",
+        do: Map.put(app_params, "category", String.trim(category_custom_value)),
+        else: app_params
+
+    app_params =
+      if socket.assigns[:icon_preview],
+        do: Map.put(app_params, "icon", socket.assigns.icon_preview),
+        else: app_params
+
     custom_fields_params = Map.get(params, "custom_fields", %{})
 
     custom_fields =
@@ -517,9 +543,17 @@ defmodule AppPlannerWeb.AppLive.Form do
   def handle_event("save-new-label", params, socket) do
     raw = params["new_label"]
     new_label_params = if is_map(raw), do: raw, else: %{}
-    title = (new_label_params["title"] || new_label_params[:title] || "") |> to_string() |> String.trim()
+
+    title =
+      (new_label_params["title"] || new_label_params[:title] || "")
+      |> to_string()
+      |> String.trim()
+
     raw_color = new_label_params["color"] || new_label_params[:color] || "#3b82f6"
-    color = raw_color |> to_string() |> String.trim() |> then(&(if &1 == "", do: "#3b82f6", else: &1))
+
+    color =
+      raw_color |> to_string() |> String.trim() |> then(&if &1 == "", do: "#3b82f6", else: &1)
+
     description = (new_label_params["description"] || "") |> to_string() |> String.trim()
 
     if title == "" do
@@ -530,7 +564,12 @@ defmodule AppPlannerWeb.AppLive.Form do
        |> assign(:new_label_color, color)
        |> assign(:new_label_description, description)}
     else
-      attrs = %{"title" => title, "color" => color, "description" => (description != "" && description) || nil}
+      attrs = %{
+        "title" => title,
+        "color" => color,
+        "description" => (description != "" && description) || nil
+      }
+
       user = socket.assigns.current_scope.user
 
       case Planner.create_label(attrs, user) do
@@ -583,18 +622,23 @@ defmodule AppPlannerWeb.AppLive.Form do
   def handle_event("add-member", %{"member_email" => email, "member_role" => role}, socket) do
     user = socket.assigns.current_scope.user
     app = socket.assigns.app
-    unless app.user_id == user.id, do: raise "Only the owner can add members"
+    unless app.user_id == user.id, do: raise("Only the owner can add members")
+
     case AppPlanner.Accounts.get_user_by_email(String.trim(email)) do
       nil ->
-        {:noreply, put_flash(socket, :error, "No user found with that email. They must register first.")}
+        {:noreply,
+         put_flash(socket, :error, "No user found with that email. They must register first.")}
+
       member_user ->
         case Planner.add_app_member(app, member_user, role) do
           {:ok, _} ->
             app_members = Planner.list_app_members(app)
+
             {:noreply,
              socket
              |> put_flash(:info, "Added #{member_user.email}")
              |> assign(:app_members, app_members)}
+
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "User already has access.")}
         end
@@ -604,9 +648,10 @@ defmodule AppPlannerWeb.AppLive.Form do
   def handle_event("remove-member", %{"user_id" => user_id}, socket) do
     user = socket.assigns.current_scope.user
     app = socket.assigns.app
-    unless app.user_id == user.id, do: raise "Only the owner can remove members"
+    unless app.user_id == user.id, do: raise("Only the owner can remove members")
     Planner.remove_app_member(app, String.to_integer(user_id))
     app_members = Planner.list_app_members(app)
+
     {:noreply,
      socket
      |> put_flash(:info, "Member removed")
@@ -619,28 +664,39 @@ defmodule AppPlannerWeb.AppLive.Form do
     app_params = merge_app_params(socket, incoming, [])
 
     category = app_params["category"]
-    category = if category == "__other__", do: String.trim(app_params["category_custom"] || ""), else: category
+
+    category =
+      if category == "__other__",
+        do: String.trim(app_params["category_custom"] || ""),
+        else: category
+
     if category != "" && category, do: Planner.ensure_category_by_name(category)
     app_params = Map.put(app_params, "category", category)
 
     custom_fields_params = Map.get(params, "custom_fields", %{})
+
     custom_fields_map =
       Enum.reduce(custom_fields_params, %{}, fn
         {_, %{"key" => k, "value" => v}}, acc when is_binary(k) and k != "" ->
           Map.put(acc, k, v)
+
         _, acc ->
           acc
       end)
+
     app_params = Map.put(app_params, "custom_fields", custom_fields_map)
 
     label_ids = socket.assigns.selected_label_ids |> Enum.map(&to_string/1)
-    labels = socket.assigns.existing_labels |> Enum.filter(fn l -> to_string(l.id) in label_ids end)
+
+    labels =
+      socket.assigns.existing_labels |> Enum.filter(fn l -> to_string(l.id) in label_ids end)
 
     save_app(socket, socket.assigns.live_action, app_params, labels)
   end
 
   defp save_app(socket, :edit, app_params, labels) do
     user = socket.assigns.current_scope.user
+
     case Planner.update_app(socket.assigns.app, app_params, labels, user) do
       {:ok, app} ->
         {:noreply,
@@ -705,9 +761,11 @@ defmodule AppPlannerWeb.AppLive.Form do
   # Merge with last known params; only update the field in _target so empty unfocused fields don't overwrite
   defp merge_app_params(socket, incoming, target) do
     base = socket.assigns[:last_app_params] || app_to_form_params(socket.assigns.app)
+
     case target do
       ["app", field] when is_binary(field) ->
         Map.put(base, field, Map.get(incoming, field, base[field]))
+
       _ ->
         Map.merge(base, incoming, fn _k, base_val, in_val ->
           if app_param_present?(in_val), do: in_val, else: base_val

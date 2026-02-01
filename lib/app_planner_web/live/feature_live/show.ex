@@ -31,12 +31,12 @@ defmodule AppPlannerWeb.FeatureLive.Show do
          <div class="space-y-10">
             <div class="flex flex-col">
               <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Rationale</label>
-              <p class="text-sm leading-relaxed">{@feature.why_need || "—"}</p>
+              <.markdown content={@feature.why_need} />
             </div>
 
             <div class="flex flex-col">
               <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Description</label>
-              <p class="text-sm leading-relaxed">{@feature.description || "—"}</p>
+              <.markdown content={@feature.description} />
             </div>
 
             <div class="grid grid-cols-2 gap-8 pt-8 border-t">
@@ -64,13 +64,13 @@ defmodule AppPlannerWeb.FeatureLive.Show do
             <div class="flex flex-col">
               <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Implementation Path</label>
               <div class="space-y-6">
-                 <div class="border-l-2 border-base-200 pl-4 py-1">
+                 <div class="border-l-2 border-base-200 pl-4 py-1 text-sm">
                     <span class="text-[9px] font-black uppercase text-gray-400 block mb-1">User Flow</span>
-                    <p class="text-xs">{@feature.how_to_add || "--"}</p>
+                    <.markdown content={@feature.how_to_add} class="text-xs" />
                  </div>
-                 <div class="border-l-2 border-base-200 pl-4 py-1">
+                 <div class="border-l-2 border-base-200 pl-4 py-1 text-sm">
                     <span class="text-[9px] font-black uppercase text-gray-400 block mb-1">Technical Strategy</span>
-                    <p class="text-xs">{@feature.how_to_implement || "--"}</p>
+                    <.markdown content={@feature.how_to_implement} class="text-xs" />
                  </div>
               </div>
             </div>
@@ -78,11 +78,11 @@ defmodule AppPlannerWeb.FeatureLive.Show do
             <div class="grid grid-cols-2 gap-8 pt-8 border-t">
                <div class="flex flex-col">
                  <label class="text-[10px] font-black uppercase text-success/60 tracking-widest mb-2">Pros</label>
-                 <p class="text-xs leading-relaxed">{@feature.pros || "--"}</p>
+                 <.markdown content={@feature.pros} class="text-xs" />
                </div>
                <div class="flex flex-col">
                  <label class="text-[10px] font-black uppercase text-error/60 tracking-widest mb-2">Cons</label>
-                 <p class="text-xs leading-relaxed">{@feature.cons || "--"}</p>
+                 <.markdown content={@feature.cons} class="text-xs" />
                </div>
             </div>
 
@@ -113,6 +113,7 @@ defmodule AppPlannerWeb.FeatureLive.Show do
 
   def breadcrumb_items_feature_show(feature) do
     app_name = if feature.app, do: feature.app.name, else: "Project"
+
     [
       %{label: "Projects", path: ~p"/apps"},
       %{label: app_name, path: ~p"/apps/#{feature.app_id}"},

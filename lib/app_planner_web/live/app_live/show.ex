@@ -108,7 +108,7 @@ defmodule AppPlannerWeb.AppLive.Show do
          <div class="space-y-8">
             <div class="flex flex-col">
               <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Description</label>
-              <p class="text-sm leading-relaxed ">{@app.description}</p>
+              <.markdown content={@app.description} />
             </div>
 
             <div class="grid grid-cols-3 gap-8 pt-4 border-t">

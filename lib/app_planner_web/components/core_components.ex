@@ -121,6 +121,33 @@ defmodule AppPlannerWeb.CoreComponents do
   end
 
   @doc """
+  Renders markdown text safely.
+  """
+  attr(:content, :string, required: true)
+  attr(:class, :any, default: nil)
+
+  def markdown(assigns) do
+    html =
+      case assigns.content do
+        nil ->
+          ""
+
+        content ->
+          content
+          |> Earmark.as_html!()
+          |> Phoenix.HTML.raw()
+      end
+
+    assigns = assign(assigns, :html, html)
+
+    ~H"""
+    <div class={["markdown-content text-sm leading-relaxed", @class]}>
+      {@html}
+    </div>
+    """
+  end
+
+  @doc """
   Renders a button with navigation support.
 
   ## Examples
