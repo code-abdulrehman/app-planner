@@ -93,6 +93,10 @@ defmodule AppPlannerWeb.AppLive.Show do
 
           <%= if @can_edit do %>
             <.link navigate={~p"/apps/#{@app}/edit?return_to=show"} class="text-xs font-bold text-gray-400 hover:text-primary">Edit</.link>
+            <span class="text-gray-200">|</span>
+            <.link navigate={~p"/apps/#{@app}/export"} target="_blank" class="text-xs font-bold text-gray-400 hover:text-primary flex items-center gap-1">
+              <.icon name="hero-document-text" class="w-3 h-3" /> Export
+            </.link>
           <% end %>
           <%= if !@can_edit && !@is_owner && String.downcase(@app.visibility || "") == "public" do %>
             <button phx-click="fork" class="btn btn-sm btn-outline btn-primary">Clone</button>
@@ -329,6 +333,7 @@ defmodule AppPlannerWeb.AppLive.Show do
 
       app ->
         app_members = Planner.list_app_members(app)
+
         {:ok,
          socket
          |> assign(:page_title, app.name)
@@ -367,10 +372,12 @@ defmodule AppPlannerWeb.AppLive.Show do
   def handle_event("add-member", %{"member_email" => email, "member_role" => role}, socket) do
     user = socket.assigns.current_scope.user
     app = socket.assigns.app
-    unless app.user_id == user.id, do: raise "Only the owner can add members"
+    unless app.user_id == user.id, do: raise("Only the owner can add members")
+
     case AppPlanner.Accounts.get_user_by_email(String.trim(email)) do
       nil ->
         {:noreply, put_flash(socket, :error, "No user found with that email.")}
+
       member_user ->
         case Planner.add_app_member(app, member_user, role) do
           {:ok, _} ->
@@ -380,6 +387,7 @@ defmodule AppPlannerWeb.AppLive.Show do
                  socket
                  |> put_flash(:error, "This project is no longer available.")
                  |> push_navigate(to: ~p"/apps")}
+
               refreshed ->
                 {:noreply,
                  socket
@@ -387,6 +395,7 @@ defmodule AppPlannerWeb.AppLive.Show do
                  |> assign(:app, refreshed)
                  |> assign(:app_members, Planner.list_app_members(refreshed))}
             end
+
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "User already has access.")}
         end
@@ -397,7 +406,7 @@ defmodule AppPlannerWeb.AppLive.Show do
   def handle_event("remove-member", %{"user_id" => user_id}, socket) do
     user = socket.assigns.current_scope.user
     app = socket.assigns.app
-    unless app.user_id == user.id, do: raise "Only the owner can remove members"
+    unless app.user_id == user.id, do: raise("Only the owner can remove members")
     Planner.remove_app_member(app, String.to_integer(user_id))
 
     case Planner.get_app(app.id, user) do
@@ -406,6 +415,7 @@ defmodule AppPlannerWeb.AppLive.Show do
          socket
          |> put_flash(:error, "This project is no longer available.")
          |> push_navigate(to: ~p"/apps")}
+
       refreshed ->
         {:noreply,
          socket

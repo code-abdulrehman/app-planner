@@ -60,6 +60,7 @@ defmodule AppPlannerWeb.Router do
       live("/apps/new", AppLive.Form, :new)
       live("/apps/:id", AppLive.Show, :show)
       live("/apps/:id/edit", AppLive.Form, :edit)
+      live("/apps/:id/export", AppLive.Export, :export)
 
       live("/features", FeatureLive.Index, :index)
       live("/features/new", FeatureLive.Form, :new)
