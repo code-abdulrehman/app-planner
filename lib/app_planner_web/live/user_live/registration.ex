@@ -8,49 +8,50 @@ defmodule AppPlannerWeb.UserLive.Registration do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm">
-        <div class="text-center">
-          <.header>
-            Register for an account
-            <:subtitle>
-              Already registered?
-              <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
-                Log in
-              </.link>
-              to your account now.
-            </:subtitle>
-          </.header>
-        </div>
 
-        <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
-          <.input
-            field={@form[:full_name]}
-            type="text"
-            label="Full name"
-            placeholder="Your name"
-            autocomplete="name"
-            phx-mounted={JS.focus()}
-          />
-          <.input
-            field={@form[:email]}
-            type="email"
-            label="Email"
-            autocomplete="username"
-            required
-          />
-          <.input
-            field={@form[:password]}
-            type="password"
-            label="Password"
-            autocomplete="new-password"
-            required
-          />
-
-          <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
-            Create an account
-          </.button>
-        </.form>
+    <div class="mx-auto max-w-sm">
+      <div class="text-center">
+        <.header>
+          Register for an account
+          <:subtitle>
+            Already registered?
+            <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
+              Log in
+            </.link>
+            to your account now.
+          </:subtitle>
+        </.header>
       </div>
+
+      <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
+        <.input
+          field={@form[:full_name]}
+          type="text"
+          label="Full name"
+          placeholder="Your name"
+          autocomplete="name"
+          phx-mounted={JS.focus()}
+        />
+        <.input
+          field={@form[:email]}
+          type="email"
+          label="Email"
+          autocomplete="username"
+          required
+        />
+        <.input
+          field={@form[:password]}
+          type="password"
+          label="Password"
+          autocomplete="new-password"
+          required
+        />
+
+        <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
+          Create an account
+        </.button>
+      </.form>
+    </div>
     </Layouts.app>
     """
   end
@@ -63,8 +64,12 @@ defmodule AppPlannerWeb.UserLive.Registration do
 
   def mount(_params, _session, socket) do
     changeset = User.registration_changeset(%User{}, %{}, hash_password: false)
+    socket =
+      socket
+      |> assign(:last_registration_params, %{})
+      |> assign_form(changeset)
 
-    {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
+    {:ok, socket}
   end
 
   @impl true
@@ -85,8 +90,17 @@ defmodule AppPlannerWeb.UserLive.Registration do
   end
 
   def handle_event("validate", %{"user" => user_params}, socket) do
-    changeset = User.registration_changeset(%User{}, user_params, hash_password: false)
-    {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
+    previous = socket.assigns[:last_registration_params] || %{}
+    merged = Map.merge(previous, user_params)
+    changeset =
+      %User{}
+      |> User.registration_changeset(merged, hash_password: false)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket
+     |> assign(:last_registration_params, merged)
+     |> assign_form(changeset)}
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do

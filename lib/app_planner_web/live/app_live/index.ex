@@ -42,7 +42,13 @@ defmodule AppPlannerWeb.AppLive.Index do
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-sm font-bold tracking-tight">{app.name}</span>
                     <span class={["text-[9px] uppercase font-black px-1.5 py-0.5 rounded", (app.visibility || "private") == "public" && "bg-primary/20 text-primary", (app.visibility || "private") == "private" && "bg-base-300 text-base-content/60"]}>
-                      {app.visibility || "private"}
+                       <%= if String.contains?( app.visibility ,"public") do %>
+                          <.icon name="hero-globe-alt" class="w-3 h-3" />
+                          {app.visibility}
+                          <%else%>
+                          <.icon name="hero-lock-closed" class="w-3 h-3" />
+                          {app.visibility}
+                        <% end %>
                     </span>
                   </div>
                   <div class="flex gap-2 items-center flex-wrap text-[10px] text-gray-400">
@@ -90,24 +96,6 @@ defmodule AppPlannerWeb.AppLive.Index do
                 <.icon name={if Planner.liked_by?(app, @current_user), do: "hero-heart-solid", else: "hero-heart"} class="w-4 h-4" />
                 <span class="text-[10px]"><%= length(app.likes || []) %></span>
               </button>
-              <%!-- "Liked by" list: separate dropdown, hover on label only --%>
-              <div class="dropdown dropdown-hover dropdown-end">
-                <label tabindex="0" class="btn btn-ghost btn-xs text-base-content/50 cursor-default text-[10px] font-bold">
-                  who liked
-                </label>
-                <div tabindex="0" class="dropdown-content z-[100] p-3 shadow bg-base-100 rounded-lg border w-52 max-h-[200px] overflow-y-auto">
-                  <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Liked by</p>
-                  <%= if Enum.empty?(app.likes || []) do %>
-                    <p class="text-xs text-gray-500">No likes yet</p>
-                  <% else %>
-                    <ul class="text-xs space-y-1">
-                      <%= for like <- app.likes || [] do %>
-                        <li class="truncate">{safe_like_email(like)}</li>
-                      <% end %>
-                    </ul>
-                  <% end %>
-                </div>
-              </div>
 
               <div class="dropdown dropdown-hover dropdown-end">
                 <label tabindex="0" class="btn btn-ghost btn-xs text-base-content/70 cursor-pointer">
@@ -179,24 +167,6 @@ defmodule AppPlannerWeb.AppLive.Index do
                 <.icon name={if Planner.liked_by?(app, @current_user), do: "hero-heart-solid", else: "hero-heart"} class="w-4 h-4" />
                 <span class="text-[10px]"><%= length(app.likes || []) %></span>
               </button>
-              <%!-- "Liked by" list: separate dropdown, hover on label only --%>
-              <div class="dropdown dropdown-hover dropdown-end">
-                <label tabindex="0" class="btn btn-ghost btn-xs text-base-content/50 cursor-default text-[10px] font-bold">
-                  who liked
-                </label>
-                <div tabindex="0" class="dropdown-content z-[100] p-3 shadow bg-base-100 rounded-lg border w-52 max-h-[200px] overflow-y-auto">
-                  <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Liked by</p>
-                  <%= if Enum.empty?(app.likes || []) do %>
-                    <p class="text-xs text-gray-500">No likes yet</p>
-                  <% else %>
-                    <ul class="text-xs space-y-1">
-                      <%= for like <- app.likes || [] do %>
-                        <li class="truncate">{safe_like_email(like)}</li>
-                      <% end %>
-                    </ul>
-                  <% end %>
-                </div>
-              </div>
 
               <div class="dropdown dropdown-hover dropdown-end">
                 <label tabindex="0" class="btn btn-ghost btn-xs text-base-content/70 cursor-pointer">
@@ -244,8 +214,10 @@ defmodule AppPlannerWeb.AppLive.Index do
     my_apps =
       Enum.filter(apps, fn app ->
         is_nil(app.parent_app_id) and
-          (app.user_id == user.id or Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end))
+          (app.user_id == user.id or
+             Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end))
       end)
+
     # Public Library: public apps
     public_apps =
       Enum.filter(
@@ -274,13 +246,19 @@ defmodule AppPlannerWeb.AppLive.Index do
 
     user = socket.assigns.current_scope.user
     apps = Planner.list_apps(user)
+
     my_apps =
       Enum.filter(apps, fn app ->
         is_nil(app.parent_app_id) and
-          (app.user_id == user.id or Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end))
+          (app.user_id == user.id or
+             Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end))
       end)
+
     public_apps =
-      Enum.filter(apps, &(String.downcase(&1.visibility || "") == "public" && is_nil(&1.parent_app_id)))
+      Enum.filter(
+        apps,
+        &(String.downcase(&1.visibility || "") == "public" && is_nil(&1.parent_app_id))
+      )
 
     socket =
       socket
@@ -309,27 +287,53 @@ defmodule AppPlannerWeb.AppLive.Index do
   @impl true
   def handle_event("toggle-like", %{"id" => id}, socket) when is_binary(id) or is_integer(id) do
     user = socket.assigns.current_user || socket.assigns.current_scope.user
-    app = Planner.get_app!(id, user)
+    app_id = if is_binary(id), do: String.to_integer(id), else: id
+    app = Planner.get_app(app_id, user)
 
-    if Planner.liked_by?(app, user) do
-      Planner.unlike_app(app.id, user.id)
+    if app == nil do
+      socket = remove_app_from_lists(socket, app_id)
+      {:noreply,
+       socket
+       |> put_flash(:error, "This project is no longer available.")}
     else
-      Planner.like_app(app.id, user.id)
-    end
-
-    updated_app = Planner.get_app!(id, user)
-    in_my_library = updated_app.user_id == user.id or Enum.any?(updated_app.app_members || [], fn m -> m.user_id == user.id end)
-
-    socket =
-      if in_my_library do
-        my_apps = Enum.map(socket.assigns.my_apps_list, fn a -> if a.id == updated_app.id, do: updated_app, else: a end)
-        assign(socket, :my_apps_list, my_apps)
+      if Planner.liked_by?(app, user) do
+        Planner.unlike_app(app.id, user.id)
       else
-        public_apps = Enum.map(socket.assigns.public_apps_list, fn a -> if a.id == updated_app.id, do: updated_app, else: a end)
-        assign(socket, :public_apps_list, public_apps)
+        Planner.like_app(app.id, user.id)
       end
 
-    {:noreply, socket}
+      updated_app = Planner.get_app(app_id, user)
+
+      if updated_app == nil do
+        socket = remove_app_from_lists(socket, app_id)
+        {:noreply,
+         socket
+         |> put_flash(:error, "This project is no longer available.")}
+      else
+        in_my_library =
+          updated_app.user_id == user.id or
+            Enum.any?(updated_app.app_members || [], fn m -> m.user_id == user.id end)
+
+        socket =
+          if in_my_library do
+            my_apps =
+              Enum.map(socket.assigns.my_apps_list, fn a ->
+                if a.id == updated_app.id, do: updated_app, else: a
+              end)
+
+            assign(socket, :my_apps_list, my_apps)
+          else
+            public_apps =
+              Enum.map(socket.assigns.public_apps_list, fn a ->
+                if a.id == updated_app.id, do: updated_app, else: a
+              end)
+
+            assign(socket, :public_apps_list, public_apps)
+          end
+
+        {:noreply, socket}
+      end
+    end
   end
 
   def handle_event("toggle-like", _params, socket), do: {:noreply, socket}
@@ -337,67 +341,113 @@ defmodule AppPlannerWeb.AppLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     user = socket.assigns.current_scope.user
-    app = Planner.get_app!(id, user)
-    unless app.user_id == user.id, do: raise "Only the owner can delete this project"
-    {:ok, _} = Planner.delete_app(app)
-    my_apps = Enum.reject(socket.assigns.my_apps_list, fn a -> a.id == app.id end)
-    {:noreply, assign(socket, :my_apps_list, my_apps) |> assign(:my_apps_count, length(my_apps))}
+    app_id = if is_binary(id), do: String.to_integer(id), else: id
+    app = Planner.get_app(app_id, user)
+
+    if app == nil do
+      socket = remove_app_from_lists(socket, app_id)
+      {:noreply,
+       socket
+       |> put_flash(:error, "This project is no longer available.")}
+    else
+      unless app.user_id == user.id, do: raise("Only the owner can delete this project")
+      {:ok, _} = Planner.delete_app(app)
+      my_apps = Enum.reject(socket.assigns.my_apps_list, fn a -> a.id == app.id end)
+      {:noreply, assign(socket, :my_apps_list, my_apps) |> assign(:my_apps_count, length(my_apps))}
+    end
   end
 
   @impl true
   def handle_event("fork", %{"id" => id}, socket) do
     user = socket.assigns.current_scope.user
-    original_app = Planner.get_app!(id, user)
+    app_id = if is_binary(id), do: String.to_integer(id), else: id
+    original_app = Planner.get_app(app_id, user)
 
-    cond do
-      original_app.user_id == user.id ->
-        {:noreply, put_flash(socket, :error, "You already own this project.")}
+    if original_app == nil do
+      socket = remove_app_from_lists(socket, app_id)
+      {:noreply,
+       socket
+       |> put_flash(:error, "This project is no longer available.")}
+    else
+      cond do
+        original_app.user_id == user.id ->
+          {:noreply, put_flash(socket, :error, "You already own this project.")}
 
-      String.downcase(original_app.visibility || "") != "public" ->
-        {:noreply, put_flash(socket, :error, "Only public projects can be cloned.")}
+        String.downcase(original_app.visibility || "") != "public" ->
+          {:noreply, put_flash(socket, :error, "Only public projects can be cloned.")}
 
-      true ->
-        case Planner.duplicate_app(original_app, user) do
-          {:ok, new_app} ->
-            my_apps = [new_app | socket.assigns.my_apps_list]
-            {:noreply,
-             socket
-             |> put_flash(:info, "App cloned successfully!")
-             |> assign(:my_apps_list, my_apps)
-             |> assign(:my_apps_count, length(my_apps))
-             |> push_patch(to: ~p"/apps?tab=my_apps")}
+        true ->
+          case Planner.duplicate_app(original_app, user) do
+            {:ok, new_app} ->
+              my_apps = [new_app | socket.assigns.my_apps_list]
 
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, "Failed to clone app.")}
-        end
+              {:noreply,
+               socket
+               |> put_flash(:info, "App cloned successfully!")
+               |> assign(:my_apps_list, my_apps)
+               |> assign(:my_apps_count, length(my_apps))
+               |> push_patch(to: ~p"/apps?tab=my_apps")}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Failed to clone app.")}
+          end
+      end
     end
   end
 
   @impl true
   def handle_info({:app_updated, id}, socket) do
     user = socket.assigns.current_user || socket.assigns.current_scope.user
-    app = Planner.get_app!(id, user)
-    in_my_library = app.user_id == user.id or Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end)
+    app = Planner.get_app(id, user)
 
-    socket =
-      if in_my_library do
-        my_apps = Enum.map(socket.assigns.my_apps_list, fn a -> if a.id == app.id, do: app, else: a end)
-        assign(socket, :my_apps_list, my_apps)
-      else
-        if String.downcase(app.visibility || "") == "public" do
-          public_apps = Enum.map(socket.assigns.public_apps_list, fn a -> if a.id == app.id, do: app, else: a end)
-          assign(socket, :public_apps_list, public_apps)
+    if app == nil do
+      socket = remove_app_from_lists(socket, id)
+      {:noreply,
+       socket
+       |> put_flash(:error, "This project is no longer available.")}
+    else
+      in_my_library =
+        app.user_id == user.id or Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end)
+
+      socket =
+        if in_my_library do
+          my_apps =
+            Enum.map(socket.assigns.my_apps_list, fn a -> if a.id == app.id, do: app, else: a end)
+
+          assign(socket, :my_apps_list, my_apps)
         else
-          public_apps = Enum.reject(socket.assigns.public_apps_list, fn a -> a.id == app.id end)
-          assign(socket, :public_apps_list, public_apps) |> assign(:public_apps_count, length(public_apps))
-        end
-      end
+          if String.downcase(app.visibility || "") == "public" do
+            public_apps =
+              Enum.map(socket.assigns.public_apps_list, fn a ->
+                if a.id == app.id, do: app, else: a
+              end)
 
-    {:noreply, socket}
+            assign(socket, :public_apps_list, public_apps)
+          else
+            public_apps = Enum.reject(socket.assigns.public_apps_list, fn a -> a.id == app.id end)
+
+            assign(socket, :public_apps_list, public_apps)
+            |> assign(:public_apps_count, length(public_apps))
+          end
+        end
+
+      {:noreply, socket}
+    end
+  end
+
+  defp remove_app_from_lists(socket, app_id) do
+    my_apps = Enum.reject(socket.assigns.my_apps_list, fn a -> a.id == app_id end)
+    public_apps = Enum.reject(socket.assigns.public_apps_list, fn a -> a.id == app_id end)
+    socket
+    |> assign(:my_apps_list, my_apps)
+    |> assign(:my_apps_count, length(my_apps))
+    |> assign(:public_apps_list, public_apps)
+    |> assign(:public_apps_count, length(public_apps))
   end
 
   def filter_apps_by_search(apps, search) when is_binary(search) do
     q = String.downcase(String.trim(search))
+
     if q == "" do
       apps
     else

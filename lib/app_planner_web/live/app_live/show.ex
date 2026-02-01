@@ -7,12 +7,7 @@ defmodule AppPlannerWeb.AppLive.Show do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <div class="mb-4">
-        <.link navigate={if @app.parent_app_id, do: ~p"/apps/#{@app.parent_app_id}", else: ~p"/apps"} class="text-xs text-gray-400 font-bold hover:text-primary transition-colors flex items-center gap-1">
-          <.icon name="hero-arrow-left" class="w-3 h-3" />
-          {if @app.parent_app_id && @app.parent_app, do: @app.parent_app.name, else: "Projects"}
-        </.link>
-      </div>
+      <.breadcrumb items={breadcrumb_items_app_show(@app)} />
 
       <div class="flex flex-col md:flex-row justify-between items-start gap-6 border-b pb-8 mb-10">
         <div class="flex items-start gap-4">
@@ -22,7 +17,15 @@ defmodule AppPlannerWeb.AppLive.Show do
            <div>
               <h1 class="text-2xl font-bold flex items-center gap-3">
                 {@app.name}
-                <span class="text-[10px] uppercase tracking-widest px-2 py-0.5 border rounded-full font-black text-gray-400">{@app.visibility}</span>
+                <span class="text-[10px] uppercase tracking-widest px-2 py-0.5 border rounded-full font-black text-gray-400">
+                 <%= if String.contains?( @app.visibility ,"public") do %>
+                 <.icon name="hero-globe-alt" class="w-3 h-3" />
+                 {@app.visibility}
+                 <%else%>
+                 <.icon name="hero-lock-closed" class="w-3 h-3" />
+                 {@app.visibility}
+                 <% end %>
+                </span>
               </h1>
               <div class="text-xs text-gray-400 font-bold mt-1">
                 {@app.category} • {@app.user.email}
@@ -100,7 +103,7 @@ defmodule AppPlannerWeb.AppLive.Show do
       <div class="grid grid-cols-1 md:grid-cols-2 gap-16 mb-16">
          <div class="space-y-8">
             <div class="flex flex-col">
-              <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Vision</label>
+              <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Description</label>
               <p class="text-sm leading-relaxed ">{@app.description}</p>
             </div>
 
@@ -136,11 +139,19 @@ defmodule AppPlannerWeb.AppLive.Show do
             <%= if @app.custom_fields && map_size(@app.custom_fields) > 0 do %>
               <div class="flex flex-col gap-4">
                  <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest">Technical Metadata</label>
-                 <div class="space-y-3">
+                 <div class="space-y-3 max-h-80 overflow-y-auto">
                    <%= for {key, value} <- @app.custom_fields do %>
                      <div class="flex flex-col border-l-2 border-base-200 pl-3 py-0.5">
                         <span class="text-[9px] font-black uppercase text-gray-400 leading-none mb-1">{key}</span>
-                        <span class="text-xs font-mono font-bold tracking-tight line-clamp-1">{value}</span>
+                        <div>
+                         <%= if String.contains?(value, "http") do %>
+                           <a href={value} target="_blank" class="text-primary hover:underline text-xs font-mono font-bold tracking-tight line-clamp-1">{value}</a>
+                         <% else %>
+                         <span class="text-xs font-mono font-bold tracking-tight line-clamp-1">
+                           {value}
+                         </span>
+                         <% end %>
+                        </div>
                      </div>
                    <% end %>
                  </div>
@@ -149,7 +160,12 @@ defmodule AppPlannerWeb.AppLive.Show do
          </div>
       </div>
 
-      <div :if={!Enum.empty?(@app.children)} class="mb-10">
+      <div
+
+      :if={!@app.parent_app_id}
+      class="mb-10">
+      <!--
+      -->
         <div class="flex justify-between items-center border-b pb-2 mb-2">
            <h2 class="text-lg font-bold">Sub-Components</h2>
            <%= if @can_edit do %>
@@ -286,21 +302,42 @@ defmodule AppPlannerWeb.AppLive.Show do
     """
   end
 
+  def breadcrumb_items_app_show(app) do
+    base = [%{label: "Projects", path: ~p"/apps"}]
+
+    with_parent =
+      if app.parent_app_id && app.parent_app do
+        base ++ [%{label: app.parent_app.name, path: ~p"/apps/#{app.parent_app_id}"}]
+      else
+        base
+      end
+
+    with_parent ++ [%{label: app.name, path: nil}]
+  end
+
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     if connected?(socket), do: Phoenix.PubSub.subscribe(AppPlanner.PubSub, "app_updates")
     user = socket.assigns.current_scope.user
-    app = Planner.get_app!(id, user)
-    app_members = Planner.list_app_members(app)
 
-    {:ok,
-     socket
-     |> assign(:page_title, app.name)
-     |> assign(:app, app)
-     |> assign(:app_members, app_members)
-     |> assign(:current_user, user)
-     |> assign(:is_owner, app.user_id == user.id)
-     |> assign(:can_edit, Planner.can_edit_app?(app, user))}
+    case Planner.get_app(id, user) do
+      nil ->
+        {:ok,
+         socket
+         |> put_flash(:error, "This project is no longer available.")
+         |> push_navigate(to: ~p"/apps")}
+
+      app ->
+        app_members = Planner.list_app_members(app)
+        {:ok,
+         socket
+         |> assign(:page_title, app.name)
+         |> assign(:app, app)
+         |> assign(:app_members, app_members)
+         |> assign(:current_user, user)
+         |> assign(:is_owner, app.user_id == user.id)
+         |> assign(:can_edit, Planner.can_edit_app?(app, user))}
+    end
   end
 
   @impl true
@@ -314,10 +351,16 @@ defmodule AppPlannerWeb.AppLive.Show do
       Planner.like_app(app.id, user.id)
     end
 
-    # Refresh app to get updated likes
-    updated_app = Planner.get_app!(app.id, user)
+    case Planner.get_app(app.id, user) do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "This project is no longer available.")
+         |> push_navigate(to: ~p"/apps")}
 
-    {:noreply, assign(socket, app: updated_app)}
+      updated_app ->
+        {:noreply, assign(socket, app: updated_app)}
+    end
   end
 
   @impl true
@@ -331,12 +374,19 @@ defmodule AppPlannerWeb.AppLive.Show do
       member_user ->
         case Planner.add_app_member(app, member_user, role) do
           {:ok, _} ->
-            app = Planner.get_app!(app.id, user)
-            {:noreply,
-             socket
-             |> put_flash(:info, "Added #{member_user.email}")
-             |> assign(:app, app)
-             |> assign(:app_members, Planner.list_app_members(app))}
+            case Planner.get_app(app.id, user) do
+              nil ->
+                {:noreply,
+                 socket
+                 |> put_flash(:error, "This project is no longer available.")
+                 |> push_navigate(to: ~p"/apps")}
+              refreshed ->
+                {:noreply,
+                 socket
+                 |> put_flash(:info, "Added #{member_user.email}")
+                 |> assign(:app, refreshed)
+                 |> assign(:app_members, Planner.list_app_members(refreshed))}
+            end
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "User already has access.")}
         end
@@ -349,12 +399,20 @@ defmodule AppPlannerWeb.AppLive.Show do
     app = socket.assigns.app
     unless app.user_id == user.id, do: raise "Only the owner can remove members"
     Planner.remove_app_member(app, String.to_integer(user_id))
-    app = Planner.get_app!(app.id, user)
-    {:noreply,
-     socket
-     |> put_flash(:info, "Member removed")
-     |> assign(:app, app)
-     |> assign(:app_members, Planner.list_app_members(app))}
+
+    case Planner.get_app(app.id, user) do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "This project is no longer available.")
+         |> push_navigate(to: ~p"/apps")}
+      refreshed ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Member removed")
+         |> assign(:app, refreshed)
+         |> assign(:app_members, Planner.list_app_members(refreshed))}
+    end
   end
 
   @impl true
@@ -388,8 +446,16 @@ defmodule AppPlannerWeb.AppLive.Show do
     app = socket.assigns.app
 
     if app.id == id do
-      updated_app = Planner.get_app!(id, socket.assigns.current_user)
-      {:noreply, assign(socket, app: updated_app)}
+      case Planner.get_app(id, socket.assigns.current_user) do
+        nil ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "This project is no longer available.")
+           |> push_navigate(to: ~p"/apps")}
+
+        updated_app ->
+          {:noreply, assign(socket, app: updated_app)}
+      end
     else
       {:noreply, socket}
     end

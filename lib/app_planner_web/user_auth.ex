@@ -284,9 +284,6 @@ defmodule AppPlannerWeb.UserAuth do
     end
   end
 
-  @doc """
-  On mount for LiveViews that require super admin. Redirects if not super_admin.
-  """
   def on_mount(:require_super_admin, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 

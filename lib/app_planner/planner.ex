@@ -52,24 +52,22 @@ defmodule AppPlanner.Planner do
   end
 
   @doc """
-  Gets a single app.
-
-  Raises `Ecto.NoResultsError` if the App does not exist.
+  Gets a single app if the user has access. Returns `nil` if not found or no access.
 
   ## Examples
 
-      iex> get_app!(123)
+      iex> get_app(123, user)
       %App{}
 
-      iex> get_app!(456)
-      ** (Ecto.NoResultsError)
+      iex> get_app(456, user)
+      nil
 
   """
-  def get_app!(id, user) when is_binary(id) do
-    get_app!(String.to_integer(id), user)
+  def get_app(id, user) when is_binary(id) do
+    get_app(String.to_integer(id), user)
   end
 
-  def get_app!(id, user) when is_integer(id) do
+  def get_app(id, user) when is_integer(id) do
     member_app_ids =
       AppMember
       |> where([m], m.user_id == ^user.id)
@@ -81,8 +79,34 @@ defmodule AppPlanner.Planner do
         (a.user_id == ^user.id or
            fragment("lower(?)", a.visibility) == "public" or a.id in subquery(member_app_ids))
     )
-    |> Repo.one!()
-    |> Repo.preload([:features, :parent_app, :labels, :user, :last_updated_by, likes: [:user], app_members: [:user], children: [:labels], features: [:last_updated_by]])
+    |> Repo.one()
+    |> case do
+      nil -> nil
+      app -> Repo.preload(app, [:features, :parent_app, :labels, :user, :last_updated_by, likes: [:user], app_members: [:user], children: [:labels], features: [:last_updated_by]])
+    end
+  end
+
+  @doc """
+  Gets a single app. Raises `Ecto.NoResultsError` if the App does not exist or user has no access.
+
+  ## Examples
+
+      iex> get_app!(123, user)
+      %App{}
+
+      iex> get_app!(456, user)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_app!(id, user) when is_binary(id) do
+    get_app!(String.to_integer(id), user)
+  end
+
+  def get_app!(id, user) when is_integer(id) do
+    case get_app(id, user) do
+      nil -> raise Ecto.NoResultsError, queryable: App
+      app -> app
+    end
   end
 
   @doc """

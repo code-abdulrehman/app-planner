@@ -43,17 +43,8 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     ~H"""
     <Layouts.app flash={@flash}>
       <div class="mb-10">
-        <div :if={@feature.app_id && @feature.app} class="mb-2">
-          <.link navigate={~p"/apps/#{@feature.app_id}"} class="text-xs font-bold text-gray-400 hover:text-primary flex items-center gap-1">
-             <.icon name="hero-arrow-left" class="w-3 h-3" /> Back to {@feature.app.name}
-          </.link>
-        </div>
-        <div :if={!@feature.app_id} class="mb-2">
-          <.link navigate={~p"/apps"} class="text-xs font-bold text-gray-400 hover:text-primary flex items-center gap-1">
-             <.icon name="hero-arrow-left" class="w-3 h-3" /> Back to Projects
-          </.link>
-        </div>
-        <h1 class="text-2xl font-bold mb-1">{@page_title}</h1>
+        <.breadcrumb items={breadcrumb_items_feature_form(@feature, @page_title, @live_action)} />
+        <h1 class="text-2xl font-bold mb-1 mt-2">{@page_title}</h1>
         <p class="text-sm text-base-content/70">Feature details and roadmap.</p>
       </div>
 
@@ -65,44 +56,24 @@ defmodule AppPlannerWeb.FeatureLive.Form do
               <.input field={@form[:title]} type="text" placeholder="e.g. Auth System" value={input_display_value(@form, @feature, :title, @live_action)} class="input input-bordered w-full" />
             </div>
 
-            <div class="form-control">
-              <label class="label"><span class="label-text font-medium">Project</span></label>
-              <div :if={!@feature.app_id}>
-                 <.input field={@form[:app_id]} type="select" options={Enum.map(@apps, &{&1.name, &1.id})} prompt="Select project..." value={input_display_value(@form, @feature, :app_id, @live_action)} class="select select-bordered w-full" />
-              </div>
-              <div :if={@feature.app_id} class="input input-bordered bg-base-200 flex items-center rounded-lg">
-                 {@feature.app.name}
-                 <input type="hidden" name="feature[app_id]" value={@feature.app_id} />
-              </div>
-            </div>
-
-            <div class="form-control">
-              <label class="label"><span class="label-text font-medium">Icon</span></label>
-              <div class="flex items-center gap-4 mb-2">
-                <div class="w-8 h-8 border border-base-300 rounded-lg flex items-center justify-center bg-base-200">
-                  <.icon name={if @icon_preview, do: "hero-#{@icon_preview}", else: "hero-bolt"} class="w-6 h-6" />
+            <div class="flex gap-4">
+                <div class="form-control w-[48%] overflow-x-hidden text-ellipsis">
+                  <label class="label"><span class="label-text font-medium">Project</span></label>
+                  <div :if={!@feature.app_id}>
+                    <.input field={@form[:app_id]} type="select" options={Enum.map(@apps, &{&1.name, &1.id})} prompt="Select project..." value={input_display_value(@form, @feature, :app_id, @live_action)} class="select select-bordered w-full overflow-x-hidden" />
+                  </div>
+                  <div :if={@feature.app_id} class="input input-bordered bg-base-200 flex items-center rounded-lg">
+                    {@feature.app.name}
+                    <input type="hidden" name="feature[app_id]" value={@feature.app_id} />
+                  </div>
                 </div>
-                <div class="flex-1">
-                  <input type="text" name="icon_search_query" phx-keyup="search-icons" phx-debounce="200"
-                         placeholder="Search icons..." class="input input-bordered w-full input-sm" value={@icon_search} />
+                <div class="form-control w-[48%]">
+                  <label class="label"><span class="label-text font-medium">Status</span></label>
+                  <.input field={@form[:status]} type="select" options={["Idea", "Planned", "In Progress", "Completed", "Archived"]} value={input_display_value(@form, @feature, :status, @live_action)} class="select select-bordered w-full" />
                 </div>
-              </div>
-              <div class="grid grid-cols-6 gap-1.5 p-2 border border-base-300 rounded-lg overflow-y-auto max-h-36">
-                <input type="hidden" name="feature[icon]" value={@icon_preview} />
-                <%= for icon <- @filtered_icons do %>
-                  <button type="button" phx-click="select-icon" phx-value-icon={icon}
-                          class={"btn btn-square btn-sm #{if @icon_preview == icon, do: "btn-primary", else: "btn-ghost"}"}>
-                    <.icon name={"hero-#{icon}"} class="w-4 h-4" />
-                  </button>
-                <% end %>
-              </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-               <div class="form-control">
-                 <label class="label"><span class="label-text font-medium">Status</span></label>
-                 <.input field={@form[:status]} type="select" options={["Idea", "Planned", "In Progress", "Completed", "Archived"]} value={input_display_value(@form, @feature, :status, @live_action)} class="select select-bordered w-full" />
-               </div>
                <div class="form-control">
                  <label class="label"><span class="label-text font-medium">Date</span></label>
                  <.input field={@form[:implementation_date]} type="date" value={input_display_value(@form, @feature, :implementation_date, @live_action)} class="input input-bordered w-full" />
@@ -116,16 +87,42 @@ defmodule AppPlannerWeb.FeatureLive.Form do
               <label class="label"><span class="label-text font-medium">Git / PR link</span></label>
               <.input field={@form[:pr_link]} type="text" placeholder="https://github.com/... or PR link" value={input_display_value(@form, @feature, :pr_link, @live_action)} class="input input-bordered w-full" />
             </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text font-medium">User flow</span></label>
+                <.input field={@form[:how_to_add]} type="textarea" placeholder="..." value={input_display_value(@form, @feature, :how_to_add, @live_action)} class="textarea textarea-bordered h-20 w-full" />
+              </div>
           </div>
 
           <div class="space-y-6">
+              <div class="form-control">
+                <label class="label"><span class="label-text font-medium">Icon</span></label>
+                <div class="flex items-center gap-4 mb-2">
+                  <div class="w-7 h-7 border border-base-300 rounded-lg flex items-center justify-center bg-base-200">
+                    <.icon name={if @icon_preview, do: "hero-#{@icon_preview}", else: "hero-bolt"} class="w-4 h-4" />
+                  </div>
+                  <div class="flex-1">
+                    <input type="text" name="icon_search_query" phx-keyup="search-icons" phx-debounce="200"
+                          placeholder="Search icons..." class="input input-bordered w-full input-sm" value={@icon_search} />
+                  </div>
+                </div>
+                <div class="grid grid-cols-6 gap-1.5 p-2 border border-base-300 rounded-lg overflow-y-auto max-h-36">
+                  <input type="hidden" name="feature[icon]" value={@icon_preview} />
+                  <%= for icon <- @filtered_icons do %>
+                    <button type="button" phx-click="select-icon" phx-value-icon={icon}
+                            class={"btn btn-square btn-sm #{if @icon_preview == icon, do: "btn-primary", else: "btn-ghost"}"}>
+                      <.icon name={"hero-#{icon}"} class="w-4 h-4" />
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+
              <div class="form-control">
                <label class="label"><span class="label-text font-medium">Rationale</span></label>
                <.input field={@form[:why_need]} type="textarea" placeholder="Why add this?" value={input_display_value(@form, @feature, :why_need, @live_action)} class="textarea textarea-bordered h-24 w-full" />
              </div>
              <div class="form-control">
                <label class="label"><span class="label-text font-medium">Description</span></label>
-               <.input field={@form[:description]} type="textarea" placeholder="Details..." value={input_display_value(@form, @feature, :description, @live_action)} class="textarea textarea-bordered h-24 w-full" />
+               <.input field={@form[:description]} type="textarea" placeholder="Details..." value={input_display_value(@form, @feature, :description, @live_action)} class="textarea textarea-bordered h-36 w-full" />
              </div>
           </div>
         </div>
@@ -133,13 +130,24 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
            <div class="space-y-6">
               <div class="form-control">
-                <label class="label"><span class="label-text font-medium">User flow</span></label>
-                <.input field={@form[:how_to_add]} type="textarea" placeholder="..." value={input_display_value(@form, @feature, :how_to_add, @live_action)} class="textarea textarea-bordered h-20 w-full" />
-              </div>
-              <div class="form-control">
                 <label class="label"><span class="label-text font-medium">Strategy</span></label>
                 <.input field={@form[:how_to_implement]} type="textarea" placeholder="..." value={input_display_value(@form, @feature, :how_to_implement, @live_action)} class="textarea textarea-bordered h-20 w-full" />
               </div>
+              <div class="form-control pt-6 border-t">
+          <label class="label flex flex-wrap items-center justify-between gap-2">
+            <span class="label-text font-medium">Custom fields</span>
+            <button type="button" phx-click="add-feature-custom-field" class="link link-primary text-sm">Add field</button>
+          </label>
+          <div class="space-y-2">
+            <%= for {field, i} <- Enum.with_index(@feature_custom_fields) do %>
+              <div class="flex gap-2 items-start group">
+                <input type="text" name={"feature_custom_fields[#{i}][key]"} value={field["key"]} placeholder="Key" class="input input-bordered input-sm w-1/3 font-bold uppercase tracking-tighter" />
+                <input type="text" name={"feature_custom_fields[#{i}][value]"} value={field["value"]} placeholder="Value" class="input input-bordered input-sm flex-1" />
+                <button type="button" phx-click="remove-feature-custom-field" phx-value-index={i} class="btn btn-ghost btn-xs text-error p-2 h-7 group-hover:opacity-100">×</button>
+              </div>
+            <% end %>
+          </div>
+        </div>
            </div>
            <div class="space-y-6">
               <div class="form-control">
@@ -153,21 +161,6 @@ defmodule AppPlannerWeb.FeatureLive.Form do
            </div>
         </div>
 
-        <div class="form-control pt-6 border-t">
-          <label class="label flex flex-wrap items-center justify-between gap-2">
-            <span class="label-text font-medium">Custom fields</span>
-            <button type="button" phx-click="add-feature-custom-field" class="link link-primary text-sm">Add field</button>
-          </label>
-          <div class="space-y-2">
-            <%= for {field, i} <- Enum.with_index(@feature_custom_fields) do %>
-              <div class="flex gap-2 items-start group">
-                <input type="text" name={"feature_custom_fields[#{i}][key]"} value={field["key"]} placeholder="Key" class="input input-bordered input-sm w-1/3 font-bold uppercase tracking-tighter" />
-                <input type="text" name={"feature_custom_fields[#{i}][value]"} value={field["value"]} placeholder="Value" class="input input-bordered input-sm flex-1" />
-                <button type="button" phx-click="remove-feature-custom-field" phx-value-index={i} class="btn btn-ghost btn-xs text-error opacity-0 group-hover:opacity-100">×</button>
-              </div>
-            <% end %>
-          </div>
-        </div>
 
         <div class="flex gap-3 pt-6 border-t">
           <.button phx-disable-with="Saving..." class="btn btn-primary">Save</.button>
@@ -202,6 +195,19 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     end
   end
 
+  def breadcrumb_items_feature_form(feature, page_title, _live_action) do
+    base = [%{label: "Projects", path: ~p"/apps"}]
+
+    with_app =
+      if feature.app_id && feature.app do
+        base ++ [%{label: feature.app.name, path: ~p"/apps/#{feature.app_id}"}]
+      else
+        base
+      end
+
+    with_app ++ [%{label: page_title, path: nil}]
+  end
+
   defp return_to("show"), do: "show"
   defp return_to("app"), do: "app"
   defp return_to(_), do: "index"
@@ -219,9 +225,19 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
     user = socket.assigns.current_scope.user
     feature = Planner.get_feature!(to_string(id), user)
-    # Preload app for breadcrumb
-    feature = %{feature | app: Planner.get_app!(feature.app_id, user)}
+    app = Planner.get_app(feature.app_id, user)
 
+    if app == nil do
+      socket
+      |> put_flash(:error, "This project is no longer available.")
+      |> push_navigate(to: ~p"/apps")
+    else
+      feature = %{feature | app: app}
+      apply_action_edit_feature(socket, feature, user)
+    end
+  end
+
+  defp apply_action_edit_feature(socket, feature, user) do
     feature_custom_fields =
       (feature.custom_fields || %{})
       |> Enum.map(fn {k, v} -> %{"key" => to_string(k), "value" => to_string(v)} end)
@@ -251,10 +267,27 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     user = socket.assigns.current_scope.user
     app_id = case params["app_id"] do
       nil -> nil
-      id -> String.to_integer(id)
+      id when is_binary(id) -> String.to_integer(id)
+      id when is_integer(id) -> id
     end
     feature = %Feature{app_id: app_id}
-    feature = if app_id, do: %{feature | app: Planner.get_app!(app_id, user)}, else: feature
+
+    if app_id != nil do
+      case Planner.get_app(app_id, user) do
+        nil ->
+          socket
+          |> put_flash(:error, "This project is no longer available.")
+          |> push_navigate(to: ~p"/apps")
+        app ->
+          feature = %{feature | app: app}
+          apply_action_new_feature(socket, feature, user)
+      end
+    else
+      apply_action_new_feature(socket, feature, user)
+    end
+  end
+
+  defp apply_action_new_feature(socket, feature, user) do
     apps = Planner.list_apps(user) |> Enum.filter(&Planner.can_edit_app?(&1, user))
     socket
     |> assign(:page_title, "New Feature")
@@ -355,14 +388,22 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
     app_id_int = normalize_app_id(raw_app_id)
 
-    feature =
+    {feature, redirect_socket} =
       if app_id_int && (feature.app_id || 0) != app_id_int do
-        %{feature | app_id: app_id_int, app: Planner.get_app!(app_id_int, user)}
+        case Planner.get_app(app_id_int, user) do
+          nil ->
+            {feature, socket |> put_flash(:error, "This project is no longer available.") |> push_navigate(to: ~p"/apps")}
+          app ->
+            {%{feature | app_id: app_id_int, app: app}, nil}
+        end
       else
-        feature
+        {feature, nil}
       end
 
-    {:noreply,
+    if redirect_socket do
+      {:noreply, redirect_socket}
+    else
+      {:noreply,
      socket
      |> assign(:feature, feature)
      |> assign(:feature_custom_fields, feature_custom_fields)
@@ -370,6 +411,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
      |> assign(:icon_preview, feature_params["icon"] || socket.assigns[:icon_preview])
      |> assign(:last_feature_params, feature_params)
      |> assign(:form, to_form(changeset, action: :validate))}
+    end
   end
 
   def handle_event("search-icons", %{"value" => search}, socket) do

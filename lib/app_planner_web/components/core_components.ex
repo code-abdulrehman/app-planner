@@ -80,6 +80,47 @@ defmodule AppPlannerWeb.CoreComponents do
   end
 
   @doc """
+  Renders a breadcrumb nav for app/feature hierarchy. Use on app show, feature show, and forms.
+
+  ## Items
+
+  Each item is a map: `%{label: "Projects", path: ~p"/apps"}`.
+  Use `path: nil` for the current page (rendered as text, no link).
+
+  ## Examples
+
+      <.breadcrumb items={[
+        %{label: "Projects", path: ~p"/apps"},
+        %{label: @app.name, path: ~p"/apps/#{@app}"},
+        %{label: "Edit", path: nil}
+      ]} />
+
+  """
+  attr(:items, :list, required: true, doc: "List of %{label: string, path: string | nil}")
+
+  def breadcrumb(assigns) do
+    ~H"""
+    <nav class="mb-4 flex items-center gap-1.5 text-xs font-bold text-gray-400 flex-wrap" aria-label="Breadcrumb">
+      <%= for {item, i} <- Enum.with_index(@items) do %>
+        <%= if i > 0 do %>
+          <span class="text-gray-300" aria-hidden="true">/</span>
+        <% end %>
+        <%= if item[:path] do %>
+          <.link navigate={item[:path]} class="hover:text-primary transition-colors flex items-center gap-1">
+            <%= if i == 0 do %>
+              <.icon name="hero-arrow-left" class="w-3 h-3 shrink-0" />
+            <% end %>
+            {item[:label]}
+          </.link>
+        <% else %>
+          <span class="text-base-content/80">{item[:label]}</span>
+        <% end %>
+      <% end %>
+    </nav>
+    """
+  end
+
+  @doc """
   Renders a button with navigation support.
 
   ## Examples

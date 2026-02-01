@@ -70,21 +70,30 @@ defmodule AppPlannerWeb.FeatureLive.Index do
     app =
       case params["app_id"] do
         nil -> nil
-        id -> Planner.get_app!(id, user)
+        id ->
+          app_id = if is_binary(id), do: String.to_integer(id), else: id
+          Planner.get_app(app_id, user)
       end
 
-    features =
-      if app do
-        Enum.map(app.features, &%{&1 | app: app})
-      else
-        Planner.list_features(user)
-      end
+    if params["app_id"] != nil and app == nil do
+      {:ok,
+       socket
+       |> put_flash(:error, "This project is no longer available.")
+       |> push_navigate(to: ~p"/apps")}
+    else
+      features =
+        if app do
+          Enum.map(app.features, &%{&1 | app: app})
+        else
+          Planner.list_features(user)
+        end
 
-    {:ok,
-     socket
-     |> assign(:page_title, if(app, do: "Features for #{app.name}", else: "Listing Features"))
-     |> assign(:app, app)
-     |> stream(:features, features)}
+      {:ok,
+       socket
+       |> assign(:page_title, if(app, do: "Features for #{app.name}", else: "Listing Features"))
+       |> assign(:app, app)
+       |> stream(:features, features)}
+    end
   end
 
   @impl true

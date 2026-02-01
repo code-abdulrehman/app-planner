@@ -7,12 +7,7 @@ defmodule AppPlannerWeb.FeatureLive.Show do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <div class="mb-4">
-        <.link navigate={~p"/apps/#{@feature.app_id}"} class="text-xs text-gray-400 font-bold hover:text-primary transition-colors flex items-center gap-1">
-          <.icon name="hero-arrow-left" class="w-3 h-3" />
-          {@feature.app.name}
-        </.link>
-      </div>
+      <.breadcrumb items={breadcrumb_items_feature_show(@feature)} />
 
       <div class="flex justify-between items-start border-b pb-8 mb-10">
         <div class="flex items-start gap-3">
@@ -93,12 +88,18 @@ defmodule AppPlannerWeb.FeatureLive.Show do
 
             <%= if @feature.custom_fields && map_size(@feature.custom_fields) > 0 do %>
               <div class="flex flex-col gap-4 pt-8 border-t">
-                <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest">Custom fields</label>
+                <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest">Technical Metadata</label>
                 <div class="space-y-3">
                   <%= for {key, value} <- @feature.custom_fields do %>
                     <div class="flex flex-col border-l-2 border-base-200 pl-3 py-0.5">
                       <span class="text-[9px] font-black uppercase text-gray-400 leading-none mb-1">{key}</span>
-                      <span class="text-xs font-mono font-bold tracking-tight line-clamp-1">{value}</span>
+                       <%= if String.contains?(value, "http") do %>
+                           <a href={value} target="_blank" class="text-primary hover:underline text-xs font-mono font-bold tracking-tight line-clamp-1">{value}</a>
+                         <% else %>
+                         <span class="text-xs font-mono font-bold tracking-tight line-clamp-1">
+                           {value}
+                         </span>
+                         <% end %>
                     </div>
                   <% end %>
                 </div>
@@ -108,6 +109,15 @@ defmodule AppPlannerWeb.FeatureLive.Show do
       </div>
     </Layouts.app>
     """
+  end
+
+  def breadcrumb_items_feature_show(feature) do
+    app_name = if feature.app, do: feature.app.name, else: "Project"
+    [
+      %{label: "Projects", path: ~p"/apps"},
+      %{label: app_name, path: ~p"/apps/#{feature.app_id}"},
+      %{label: feature.title, path: nil}
+    ]
   end
 
   @impl true

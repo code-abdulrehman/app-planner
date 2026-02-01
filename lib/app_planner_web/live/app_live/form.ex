@@ -49,17 +49,8 @@ defmodule AppPlannerWeb.AppLive.Form do
     ~H"""
     <Layouts.app flash={@flash}>
       <div class="mb-10">
-        <div :if={@app.parent_app_id} class="mb-2">
-          <.link navigate={~p"/apps/#{@app.parent_app_id}"} class="text-xs font-bold text-gray-400 hover:text-primary flex items-center gap-1">
-             <.icon name="hero-arrow-left" class="w-3 h-3" /> Back to {parent_app_name(@app)}
-          </.link>
-        </div>
-        <div :if={!@app.parent_app_id} class="mb-2">
-          <.link navigate={~p"/apps"} class="text-xs font-bold text-gray-400 hover:text-primary flex items-center gap-1">
-             <.icon name="hero-arrow-left" class="w-3 h-3" /> Back to Projects
-          </.link>
-        </div>
-        <h1 class="text-2xl font-bold mb-1">{@page_title}</h1>
+        <.breadcrumb items={breadcrumb_items_app_form(@app, @page_title, @live_action)} />
+        <h1 class="text-2xl font-bold mb-1 mt-2">{@page_title}</h1>
         <p class="text-sm text-base-content/70">Project details and settings.</p>
       </div>
 
@@ -125,8 +116,8 @@ defmodule AppPlannerWeb.AppLive.Form do
             <div class="form-control">
               <label class="label"><span class="label-text font-medium">Icon</span></label>
               <div class="flex items-center gap-4 mb-2">
-                <div class="w-8 h-8 border border-base-300 rounded-lg flex items-center justify-center bg-base-200">
-                  <.icon name={if @icon_preview, do: "hero-#{@icon_preview}", else: "hero-cube"} class="w-6 h-6" />
+                <div class="w-7 h-7 border border-base-300 rounded-lg flex items-center justify-center bg-base-200">
+                  <.icon name={if @icon_preview, do: "hero-#{@icon_preview}", else: "hero-cube"} class="w-5 h-5" />
                 </div>
                 <div class="flex-1">
                   <input type="text" name="icon_search_query" phx-keyup="search-icons" phx-debounce="200"
@@ -323,7 +314,18 @@ defmodule AppPlannerWeb.AppLive.Form do
     raw_id || raise "edit action requires id in params"
     id = if is_binary(raw_id), do: String.to_integer(raw_id), else: raw_id
 
-    app = Planner.get_app!(id, user)
+    case Planner.get_app(id, user) do
+      nil ->
+        socket
+        |> put_flash(:error, "This project is no longer available.")
+        |> push_navigate(to: ~p"/apps")
+
+      app ->
+        apply_action_edit_app(socket, params, user, app)
+    end
+  end
+
+  defp apply_action_edit_app(socket, params, user, app) do
     categories = Planner.list_categories()
     category_options = Enum.map(categories, &{&1.name, &1.name}) ++ [{"Other", "__other__"}]
     socket = socket |> assign(:categories, categories) |> assign(:category_options, category_options)
@@ -377,9 +379,16 @@ defmodule AppPlannerWeb.AppLive.Form do
       end
 
     app = %App{custom_fields: %{}, parent_app_id: parent_app_id}
-    # Preload parent app for breadcrumb
+    # Preload parent app for breadcrumb (nil if deleted)
     app =
-      if parent_app_id, do: %{app | parent_app: Planner.get_app!(parent_app_id, user)}, else: app
+      if parent_app_id do
+        case Planner.get_app(parent_app_id, user) do
+          nil -> app
+          parent -> %{app | parent_app: parent}
+        end
+      else
+        app
+      end
 
     socket
     |> assign(:page_title, "New Project")
@@ -657,6 +666,20 @@ defmodule AppPlannerWeb.AppLive.Form do
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
+  end
+
+  def breadcrumb_items_app_form(app, page_title, _live_action) do
+    base = [%{label: "Projects", path: ~p"/apps"}]
+
+    with_parent =
+      if app.parent_app_id do
+        parent_name = parent_app_name(app)
+        base ++ [%{label: parent_name, path: ~p"/apps/#{app.parent_app_id}"}]
+      else
+        base
+      end
+
+    with_parent ++ [%{label: page_title, path: nil}]
   end
 
   defp return_path("index", _app), do: ~p"/apps"
