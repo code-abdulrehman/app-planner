@@ -86,6 +86,7 @@ defmodule AppPlanner.MixProject do
       "assets.build": ["compile", "tailwind app_planner", "esbuild app_planner"],
       "assets.deploy": [
         "tailwind app_planner --minify",
+        "esbuild app_planner --minify",
         "phx.digest"
       ],
       precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
