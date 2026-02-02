@@ -246,6 +246,19 @@ defmodule AppPlannerWeb.UserAuth do
     end
   end
 
+  def on_mount(:require_super_admin, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    if socket.assigns.current_scope && socket.assigns.current_scope.user && Accounts.super_admin?(socket.assigns.current_scope.user) do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> Phoenix.LiveView.put_flash(:error, "Only super admin can access this page.")
+       |> Phoenix.LiveView.push_navigate(to: ~p"/")}
+    end
+  end
+
   defp mount_current_scope(socket, session) do
     socket =
       Phoenix.Component.assign_new(socket, :current_scope, fn ->
@@ -281,19 +294,6 @@ defmodule AppPlannerWeb.UserAuth do
       |> maybe_store_return_to()
       |> redirect(to: ~p"/users/log-in")
       |> halt()
-    end
-  end
-
-  def on_mount(:require_super_admin, _params, session, socket) do
-    socket = mount_current_scope(socket, session)
-
-    if socket.assigns.current_scope && socket.assigns.current_scope.user && Accounts.super_admin?(socket.assigns.current_scope.user) do
-      {:cont, socket}
-    else
-      {:halt,
-       socket
-       |> Phoenix.LiveView.put_flash(:error, "Only super admin can access this page.")
-       |> Phoenix.LiveView.push_navigate(to: ~p"/")}
     end
   end
 

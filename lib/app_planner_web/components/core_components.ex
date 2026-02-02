@@ -91,7 +91,7 @@ defmodule AppPlannerWeb.CoreComponents do
 
       <.breadcrumb items={[
         %{label: "Projects", path: ~p"/apps"},
-        %{label: @app.name, path: ~p"/apps/#{@app}"},
+        %{label: "My Project", path: ~p"/apps/123"},
         %{label: "Edit", path: nil}
       ]} />
 

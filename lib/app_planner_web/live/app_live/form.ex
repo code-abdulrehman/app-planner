@@ -59,7 +59,7 @@ defmodule AppPlannerWeb.AppLive.Form do
         <p class="text-sm text-base-content/70">Project details and settings.</p>
       </div>
 
-      <.form for={@form} id="app-form" phx-change="validate" phx-submit="save" class="space-y-8">
+      <.form for={@form} id="app-form" phx-change="validate" phx-debounce="200" phx-submit="save" class="space-y-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
           <div class="space-y-6">
             <div class="form-control">
@@ -330,7 +330,44 @@ defmodule AppPlannerWeb.AppLive.Form do
     end
   end
 
-  defp apply_action_edit_app(socket, params, user, app) do
+  defp apply_action(socket, :new, params, user) do
+    parent_app_id =
+      case params["parent_app_id"] || params["app_id"] do
+        nil -> nil
+        id -> String.to_integer(id)
+      end
+
+    app = %App{custom_fields: %{}, parent_app_id: parent_app_id}
+    # Preload parent app for breadcrumb (nil if deleted)
+    app =
+      if parent_app_id do
+        case Planner.get_app(parent_app_id, user) do
+          nil -> app
+          parent -> %{app | parent_app: parent}
+        end
+      else
+        app
+      end
+
+    socket
+    |> assign(:page_title, "New Project")
+    |> assign(:app, app)
+    |> assign(:app_members, [])
+    |> assign(:is_owner, true)
+    |> assign(:custom_fields, [])
+    |> assign(:selected_label_ids, [])
+    |> assign(:show_labels_modal, false)
+    |> assign(:new_label_title, "")
+    |> assign(:new_label_color, "#3b82f6")
+    |> assign(:new_label_description, "")
+    |> assign(:new_label_error, nil)
+    |> assign(:icon_preview, nil)
+    |> assign(:label_search, "")
+    |> assign(:last_app_params, app_to_form_params(app))
+    |> assign(:form, to_form(Planner.change_app(app)))
+  end
+
+  defp apply_action_edit_app(socket, _params, user, app) do
     categories = Planner.list_categories()
     category_options = Enum.map(categories, &{&1.name, &1.name}) ++ [{"Other", "__other__"}]
 
@@ -384,43 +421,6 @@ defmodule AppPlannerWeb.AppLive.Form do
     |> assign(:icon_preview, app.icon)
     |> assign(:last_app_params, initial_params)
     |> assign(:form, form)
-  end
-
-  defp apply_action(socket, :new, params, user) do
-    parent_app_id =
-      case params["parent_app_id"] || params["app_id"] do
-        nil -> nil
-        id -> String.to_integer(id)
-      end
-
-    app = %App{custom_fields: %{}, parent_app_id: parent_app_id}
-    # Preload parent app for breadcrumb (nil if deleted)
-    app =
-      if parent_app_id do
-        case Planner.get_app(parent_app_id, user) do
-          nil -> app
-          parent -> %{app | parent_app: parent}
-        end
-      else
-        app
-      end
-
-    socket
-    |> assign(:page_title, "New Project")
-    |> assign(:app, app)
-    |> assign(:app_members, [])
-    |> assign(:is_owner, true)
-    |> assign(:custom_fields, [])
-    |> assign(:selected_label_ids, [])
-    |> assign(:show_labels_modal, false)
-    |> assign(:new_label_title, "")
-    |> assign(:new_label_color, "#3b82f6")
-    |> assign(:new_label_description, "")
-    |> assign(:new_label_error, nil)
-    |> assign(:icon_preview, nil)
-    |> assign(:label_search, "")
-    |> assign(:last_app_params, app_to_form_params(app))
-    |> assign(:form, to_form(Planner.change_app(app)))
   end
 
   @impl true
@@ -705,7 +705,7 @@ defmodule AppPlannerWeb.AppLive.Form do
          |> push_navigate(to: return_path(socket.assigns.return_to, app))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
     end
   end
 
@@ -720,7 +720,7 @@ defmodule AppPlannerWeb.AppLive.Form do
          |> push_navigate(to: return_path(socket.assigns.return_to, app))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
     end
   end
 

@@ -49,7 +49,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         <p class="text-sm text-base-content/70">Feature details and roadmap.</p>
       </div>
 
-      <.form for={@form} id="feature-form" phx-change="validate" phx-submit="save" class="space-y-8 max-w-4xl">
+      <.form for={@form} id="feature-form" phx-change="validate" phx-debounce="200" phx-submit="save" class="space-y-8 max-w-4xl">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div class="space-y-6">
             <div class="form-control">
@@ -240,33 +240,6 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     end
   end
 
-  defp apply_action_edit_feature(socket, feature, user) do
-    feature_custom_fields =
-      (feature.custom_fields || %{})
-      |> Enum.map(fn {k, v} -> %{"key" => to_string(k), "value" => to_string(v)} end)
-
-    apps =
-      Planner.list_apps(user)
-      |> Enum.filter(&Planner.can_edit_app?(&1, user))
-
-    # Pre-fill form with existing feature data so all fields show old values
-    feature_params = feature_to_form_params(feature)
-
-    form =
-      feature
-      |> Planner.change_feature(feature_params)
-      |> to_form()
-
-    socket
-    |> assign(:page_title, "Edit Feature")
-    |> assign(:feature, feature)
-    |> assign(:apps, apps)
-    |> assign(:feature_custom_fields, feature_custom_fields)
-    |> assign(:icon_preview, feature.icon)
-    |> assign(:last_feature_params, feature_to_form_params(feature))
-    |> assign(:form, form)
-  end
-
   defp apply_action(socket, :new, params) do
     user = socket.assigns.current_scope.user
 
@@ -293,6 +266,33 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     else
       apply_action_new_feature(socket, feature, user)
     end
+  end
+
+  defp apply_action_edit_feature(socket, feature, user) do
+    feature_custom_fields =
+      (feature.custom_fields || %{})
+      |> Enum.map(fn {k, v} -> %{"key" => to_string(k), "value" => to_string(v)} end)
+
+    apps =
+      Planner.list_apps(user)
+      |> Enum.filter(&Planner.can_edit_app?(&1, user))
+
+    # Pre-fill form with existing feature data so all fields show old values
+    feature_params = feature_to_form_params(feature)
+
+    form =
+      feature
+      |> Planner.change_feature(feature_params)
+      |> to_form()
+
+    socket
+    |> assign(:page_title, "Edit Feature")
+    |> assign(:feature, feature)
+    |> assign(:apps, apps)
+    |> assign(:feature_custom_fields, feature_custom_fields)
+    |> assign(:icon_preview, feature.icon)
+    |> assign(:last_feature_params, feature_to_form_params(feature))
+    |> assign(:form, form)
   end
 
   defp apply_action_new_feature(socket, feature, user) do
@@ -516,7 +516,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
          |> push_navigate(to: return_path(socket.assigns.return_to, feature))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
     end
   end
 
@@ -531,7 +531,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
          |> push_navigate(to: return_path(socket.assigns.return_to, feature))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
     end
   end
 

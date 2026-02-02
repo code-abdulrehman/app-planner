@@ -480,14 +480,6 @@ defmodule AppPlannerWeb.AppLive.Index do
 
   def filter_apps_by_search(apps, _), do: apps
 
-  defp safe_like_email(like) do
-    if Ecto.assoc_loaded?(like.user) && like.user do
-      like.user.email
-    else
-      "—"
-    end
-  end
-
   defp empty_state(assigns) do
     ~H"""
     <div class="flex flex-col items-center justify-center py-20 px-4 text-center bg-base-100/30 border-2 border-dashed border-base-200 rounded-3xl mt-4">
