@@ -30,7 +30,7 @@
       })();
     </script>
   </head>
-  <body class="bg-base-200/30 min-h-screen font-sans">
+  <body class="bg-base-200/30 min-h-screen font-sans flex flex-col">
     <div class="navbar bg-base-100 shadow-sm px-4 sm:px-6 lg:px-8 border-b print:hidden">
       <div class="navbar-start">
         <a href="/" class="flex items-center gap-2 group">
@@ -75,8 +75,25 @@
         </ul>
       </div>
     </div>
-    <div class="">
+    <div class="flex-grow">
       {@inner_content}
     </div>
+
+    <footer class="footer footer-center p-8 bg-base-100 text-base-content border-t print:hidden mt-auto">
+      <aside class="flex flex-col items-center gap-2">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-6 h-6 rounded bg-primary flex items-center justify-center text-primary-content text-[10px] font-bold">
+            <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
+          </div>
+          <p class="font-black tracking-tighter text-lg">AppPlanner</p>
+        </div>
+        <p class="text-xs opacity-60">
+          © {Date.utc_today().year} AppPlanner. All rights reserved.
+        </p>
+        <p class="text-xs font-bold">
+          Built with ❤️ by <a href="https://github.com/code-abdulrehman" target="_blank" class="link link-primary no-underline hover:underline">code-abdulrehman</a>
+        </p>
+      </aside>
+    </footer>
   </body>
 </html>

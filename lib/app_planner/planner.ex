@@ -41,14 +41,23 @@ defmodule AppPlanner.Planner do
       |> select([m], m.app_id)
 
     App
-    |> where([a],
+    |> where(
+      [a],
       a.user_id == ^user.id or
         fragment("lower(?)", a.visibility) == "public" or
         a.id in subquery(member_app_ids)
     )
     |> order_by([a], desc: a.inserted_at)
     |> Repo.all()
-    |> Repo.preload([:user, :labels, :features, :children, :last_updated_by, likes: [:user], app_members: [:user]])
+    |> Repo.preload([
+      :user,
+      :labels,
+      :features,
+      :children,
+      :last_updated_by,
+      likes: [:user],
+      app_members: [:user]
+    ])
   end
 
   @doc """
@@ -74,15 +83,29 @@ defmodule AppPlanner.Planner do
       |> select([m], m.app_id)
 
     App
-    |> where([a],
+    |> where(
+      [a],
       a.id == ^id and
         (a.user_id == ^user.id or
            fragment("lower(?)", a.visibility) == "public" or a.id in subquery(member_app_ids))
     )
     |> Repo.one()
     |> case do
-      nil -> nil
-      app -> Repo.preload(app, [:features, :parent_app, :labels, :user, :last_updated_by, likes: [:user], app_members: [:user], children: [:labels], features: [:last_updated_by]])
+      nil ->
+        nil
+
+      app ->
+        Repo.preload(app, [
+          :features,
+          :parent_app,
+          :labels,
+          :user,
+          :last_updated_by,
+          likes: [:user],
+          app_members: [:user],
+          children: [:labels, features: [:last_updated_by]],
+          features: [:last_updated_by]
+        ])
     end
   end
 
@@ -126,6 +149,7 @@ defmodule AppPlanner.Planner do
       attrs
       |> Map.put("user_id", user.id)
       |> Map.put("last_updated_by_id", user.id)
+
     %App{}
     |> App.changeset(attrs)
     |> Ecto.Changeset.put_assoc(:labels, labels)
@@ -200,6 +224,7 @@ defmodule AppPlanner.Planner do
   """
   def list_features(user) do
     app_ids = list_apps(user) |> Enum.map(& &1.id)
+
     Feature
     |> where([f], f.app_id in ^app_ids)
     |> order_by([f], desc: f.updated_at)
@@ -229,7 +254,8 @@ defmodule AppPlanner.Planner do
 
     Feature
     |> join(:inner, [f], a in App, on: f.app_id == a.id)
-    |> where([f, a],
+    |> where(
+      [f, a],
       f.id == ^id and
         (f.user_id == ^user.id or a.user_id == ^user.id or a.id in subquery(member_app_ids))
     )
@@ -255,6 +281,7 @@ defmodule AppPlanner.Planner do
       attrs
       |> Map.put("user_id", user.id)
       |> Map.put("last_updated_by_id", user.id)
+
     %Feature{}
     |> Feature.changeset(attrs)
     |> Repo.insert()
@@ -274,6 +301,7 @@ defmodule AppPlanner.Planner do
   """
   def update_feature(%Feature{} = feature, attrs, updated_by \\ nil) do
     attrs = if updated_by, do: Map.put(attrs, "last_updated_by_id", updated_by.id), else: attrs
+
     feature
     |> Feature.changeset(attrs)
     |> Repo.update()
@@ -322,6 +350,7 @@ defmodule AppPlanner.Planner do
 
   def create_label(attrs, user) do
     attrs = Map.put(attrs, "user_id", user.id)
+
     %Label{}
     |> Label.changeset(attrs)
     |> Repo.insert()
@@ -362,7 +391,15 @@ defmodule AppPlanner.Planner do
         create_feature(feature_attrs, user)
       end
 
-      Repo.preload(new_app, [:user, :labels, :features, :children, :last_updated_by, :likes, app_members: [:user]])
+      Repo.preload(new_app, [
+        :user,
+        :labels,
+        :features,
+        :children,
+        :last_updated_by,
+        :likes,
+        app_members: [:user]
+      ])
     end)
   end
 

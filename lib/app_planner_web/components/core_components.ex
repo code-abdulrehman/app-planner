@@ -125,10 +125,13 @@ defmodule AppPlannerWeb.CoreComponents do
   """
   attr(:content, :string, required: true)
   attr(:class, :any, default: nil)
+  attr(:compact, :boolean, default: false)
 
   def markdown(assigns) do
+    {metadata, body} = parse_markdown_with_metadata(assigns.content)
+
     html =
-      case assigns.content do
+      case body do
         nil ->
           ""
 
@@ -138,13 +141,59 @@ defmodule AppPlannerWeb.CoreComponents do
           |> Phoenix.HTML.raw()
       end
 
-    assigns = assign(assigns, :html, html)
+    assigns =
+      assigns
+      |> assign(:html, html)
+      |> assign(:metadata, metadata)
 
     ~H"""
-    <div class={["markdown-content text-sm leading-relaxed", @class]}>
-      {@html}
+    <div class={["markdown-container", @class]}>
+      <%= if Enum.any?(@metadata) do %>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <%= for {key, value} <- @metadata do %>
+             <div class="bg-primary/5 border border-primary/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tight">
+               <span class="text-primary/50 mr-1">{key}:</span>
+               <span class="text-primary">{value}</span>
+             </div>
+          <% end %>
+        </div>
+      <% end %>
+      <div class={[
+        "markdown-content text-sm leading-relaxed",
+        !@compact && "prose prose-slate max-w-none prose-p:my-0 prose-headings:mb-2 prose-headings:mt-4 first:prose-p:mt-0 last:prose-p:mb-0",
+        @compact && "prose-compact"
+      ]}>
+        {@html}
+      </div>
     </div>
     """
+  end
+
+  defp parse_markdown_with_metadata(nil), do: {[], ""}
+
+  defp parse_markdown_with_metadata(content) do
+    if String.starts_with?(content, "---") do
+      case String.split(content, "---", parts: 3) do
+        ["", metadata_str, body] ->
+          {parse_frontmatter(metadata_str), String.trim(body)}
+
+        _ ->
+          {[], content}
+      end
+    else
+      {[], content}
+    end
+  end
+
+  defp parse_frontmatter(str) do
+    str
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+    |> Enum.filter(&(&1 != "" && String.contains?(&1, ":")))
+    |> Enum.map(fn line ->
+      [key | rest] = String.split(line, ":", parts: 2)
+      {String.trim(key), String.trim(Enum.join(rest, ":"))}
+    end)
   end
 
   @doc """

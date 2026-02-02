@@ -1,18 +1,65 @@
-# AppPlanner
+# 🚀 AppPlanner
 
-To start your Phoenix server:
+A premium project specification and roadmap management tool built with Elixir & Phoenix. Plan, track, and export your project documentation with ease.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+### ✨ Key Features
+- **Project Hierarchy**: Manage main projects and nested sub-components.
+- **Markdown Support**: Rich text rendering for descriptions, rationale, and technical strategies.
+- **Master Export**: Generate professional PDF documentation for stakeholders.
+- **Custom Metadata**: Tailor meta data for every project and feature.
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+---
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+### 💻 Local Development
 
-## Learn more
+1. **Setup Environment**:
+   ```bash
+   cp .env.example .env
+   # Update .env with your local credentials
+   ```
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://hexdocs.pm/phoenix/overview.html
-* Docs: https://hexdocs.pm/phoenix
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+2. **Install & Setup**:
+   ```bash
+   mix setup
+   ```
+
+3. **Run Server**:
+   ```bash
+   mix phx.server
+   # Visit localhost:4006
+   ```
+
+---
+
+### 🌐 Deployment (Gigalixir)
+
+Follow these steps to deploy your instance to Gigalixir:
+
+1. **Create App**:
+   ```bash
+   gigalixir create -n your-app-name
+   ```
+
+2. **Provision Database**:
+   ```bash
+   gigalixir pg:create --free
+   ```
+
+3. **Configure Secrets**:
+   ```bash
+   gigalixir config:set SECRET_KEY_BASE=$(mix phx.gen.secret)
+   gigalixir config:set PHX_HOST=your-app-name.gigalixirapp.com
+   ```
+
+4. **Deploy Code**:
+   ```bash
+   git push gigalixir main
+   ```
+
+5. **Run Migrations**:
+   ```bash
+   gigalixir run mix ecto.migrate
+   ```
+
+---
+*Built with ❤️ using Phoenix & LiveView.*
