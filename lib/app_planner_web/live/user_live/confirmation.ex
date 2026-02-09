@@ -6,69 +6,67 @@ defmodule AppPlannerWeb.UserLive.Confirmation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm">
-        <div class="text-center">
-          <.header>Welcome {@user.email}</.header>
-        </div>
+    <div class="max-w-md mx-auto py-24 px-6 text-center">
+       <div class="mb-12">
+          <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">A</div>
+          <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Welcome Back</h1>
+          <p class="text-sm text-base-content/40 font-medium italic">
+            You're signing in as <span class="text-primary font-bold">{@user.email}</span>
+          </p>
+       </div>
 
-        <.form
-          :if={!@user.confirmed_at}
-          for={@form}
-          id="confirmation_form"
-          phx-mounted={JS.focus_first()}
-          phx-submit="submit"
-          action={~p"/users/log-in?_action=confirmed"}
-          phx-trigger-action={@trigger_submit}
-        >
-          <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
-          <.button
-            name={@form[:remember_me].name}
-            value="true"
-            phx-disable-with="Confirming..."
-            class="btn btn-primary w-full"
+       <div class="bg-base-50/50 border border-base-200 rounded-lg p-8 space-y-6">
+          <.form
+            :if={!@user.confirmed_at}
+            for={@form}
+            id="confirmation_form"
+            phx-mounted={JS.focus_first()}
+            phx-submit="submit"
+            action={~p"/users/log-in?_action=confirmed"}
+            phx-trigger-action={@trigger_submit}
+            class="space-y-4"
           >
-            Confirm and stay logged in
-          </.button>
-          <.button phx-disable-with="Confirming..." class="btn btn-primary btn-soft w-full mt-2">
-            Confirm and log in only this time
-          </.button>
-        </.form>
+            <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
+            <button type="submit" name={@form[:remember_me].name} value="true" phx-disable-with="Confirming..." class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+              Confirm & Secure Session
+            </button>
+            <button type="submit" phx-disable-with="Confirming..." class="btn btn-outline w-full rounded-lg text-[10px] font-black uppercase tracking-widest border-base-200">
+              Confirm for this session only
+            </button>
+          </.form>
 
-        <.form
-          :if={@user.confirmed_at}
-          for={@form}
-          id="login_form"
-          phx-submit="submit"
-          phx-mounted={JS.focus_first()}
-          action={~p"/users/log-in"}
-          phx-trigger-action={@trigger_submit}
-        >
-          <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
-          <%= if @current_scope do %>
-            <.button phx-disable-with="Logging in..." class="btn btn-primary w-full">
-              Log in
-            </.button>
-          <% else %>
-            <.button
-              name={@form[:remember_me].name}
-              value="true"
-              phx-disable-with="Logging in..."
-              class="btn btn-primary w-full"
-            >
-              Keep me logged in on this device
-            </.button>
-            <.button phx-disable-with="Logging in..." class="btn btn-primary btn-soft w-full mt-2">
-              Log me in only this time
-            </.button>
-          <% end %>
-        </.form>
+          <.form
+            :if={@user.confirmed_at}
+            for={@form}
+            id="login_form"
+            phx-submit="submit"
+            phx-mounted={JS.focus_first()}
+            action={~p"/users/log-in"}
+            phx-trigger-action={@trigger_submit}
+            class="space-y-4"
+          >
+            <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
+            <%= if @current_scope do %>
+              <button type="submit" phx-disable-with="Logging in..." class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                Log In
+              </button>
+            <% else %>
+              <button type="submit" name={@form[:remember_me].name} value="true" phx-disable-with="Logging in..." class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                Secure Log In
+              </button>
+              <button type="submit" phx-disable-with="Logging in..." class="btn btn-outline w-full rounded-lg text-[10px] font-black uppercase tracking-widest border-base-200">
+                Log in for this session only
+              </button>
+            <% end %>
+          </.form>
+       </div>
 
-        <p :if={!@user.confirmed_at} class="alert alert-outline mt-8">
-          Tip: If you prefer passwords, you can enable them in the user settings.
-        </p>
-      </div>
-    </Layouts.app>
+       <div :if={!@user.confirmed_at} class="mt-8 p-4 bg-base-100 border border-base-200 rounded-lg">
+          <p class="text-[9px] font-black uppercase text-base-content/40 tracking-widest leading-relaxed">
+            Tip: You can enable password-based login in your account settings once confirmed.
+          </p>
+       </div>
+    </div>
     """
   end
 

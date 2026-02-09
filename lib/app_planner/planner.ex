@@ -6,12 +6,14 @@ defmodule AppPlanner.Planner do
   import Ecto.Query, warn: false
   alias AppPlanner.Repo
 
-  alias AppPlanner.Planner.App
-  alias AppPlanner.Planner.AppMember
-  alias AppPlanner.Planner.Category
-  alias AppPlanner.Planner.Label
+  alias AppPlanner.Planner.{App, Feature, Task, TaskHistory, Category, TaskComment}
+  alias AppPlanner.Workspaces
+  alias AppPlanner.Accounts
 
-  # Categories
+  # ============================================================================
+  # Category Context
+  # ============================================================================
+
   def list_categories do
     Category |> order_by([c], asc: c.name) |> Repo.all()
   end
@@ -25,443 +27,341 @@ defmodule AppPlanner.Planner do
     %Category{} |> Category.changeset(%{name: name}) |> Repo.insert!()
   end
 
-  @doc """
-  Returns the list of apps.
+  # ============================================================================
+  # App Context
+  # ============================================================================
 
-  ## Examples
+  def list_workspace_apps(%Accounts.User{} = current_user, workspace_id) do
+    case Workspaces.get_workspace!(workspace_id) do
+      %AppPlanner.Planner.Workspace{} = workspace ->
+        if Workspaces.can_view?(current_user, workspace) or Accounts.super_admin?(current_user) do
+          App
+          |> where([a], a.workspace_id == ^workspace_id)
+          |> order_by([a], desc: a.inserted_at)
+          |> Repo.all()
+          |> Repo.preload([:user, :last_updated_by, :features])
+        else
+          {:error, :unauthorized}
+        end
 
-      iex> list_apps()
-      [%App{}, ...]
-
-  """
-  def list_apps(user) do
-    member_app_ids =
-      AppMember
-      |> where([m], m.user_id == ^user.id)
-      |> select([m], m.app_id)
-
-    App
-    |> where(
-      [a],
-      a.user_id == ^user.id or
-        fragment("lower(?)", a.visibility) == "public" or
-        a.id in subquery(member_app_ids)
-    )
-    |> order_by([a], desc: a.inserted_at)
-    |> Repo.all()
-    |> Repo.preload([
-      :user,
-      :labels,
-      :features,
-      :children,
-      :last_updated_by,
-      likes: [:user],
-      app_members: [:user]
-    ])
-  end
-
-  @doc """
-  Gets a single app if the user has access. Returns `nil` if not found or no access.
-
-  ## Examples
-
-      iex> get_app(123, user)
-      %App{}
-
-      iex> get_app(456, user)
-      nil
-
-  """
-  def get_app(id, user) when is_binary(id) do
-    get_app(String.to_integer(id), user)
-  end
-
-  def get_app(id, user) when is_integer(id) do
-    member_app_ids =
-      AppMember
-      |> where([m], m.user_id == ^user.id)
-      |> select([m], m.app_id)
-
-    App
-    |> where(
-      [a],
-      a.id == ^id and
-        (a.user_id == ^user.id or
-           fragment("lower(?)", a.visibility) == "public" or a.id in subquery(member_app_ids))
-    )
-    |> Repo.one()
-    |> case do
-      nil ->
-        nil
-
-      app ->
-        Repo.preload(app, [
-          :features,
-          :parent_app,
-          :labels,
-          :user,
-          :last_updated_by,
-          likes: [:user],
-          app_members: [:user],
-          children: [:labels, features: [:last_updated_by]],
-          features: [:last_updated_by]
-        ])
+      _ ->
+        {:error, :not_found}
     end
   end
 
-  @doc """
-  Gets a single app. Raises `Ecto.NoResultsError` if the App does not exist or user has no access.
+  def list_apps(_user, nil), do: []
+  def list_apps(user, workspace_id), do: list_workspace_apps(user, workspace_id)
 
-  ## Examples
+  def get_app(%Accounts.User{} = current_user, app_id, workspace_id) do
+    if is_nil(app_id) || is_nil(workspace_id) do
+      nil
+    else
+      case Workspaces.get_workspace!(workspace_id) do
+        %AppPlanner.Planner.Workspace{} = workspace ->
+          if Workspaces.can_view?(current_user, workspace) or Accounts.super_admin?(current_user) do
+            App
+            |> where([a], a.id == ^app_id and a.workspace_id == ^workspace_id)
+            |> Repo.one()
+            |> case do
+              nil -> nil
+              app -> Repo.preload(app, [:user, :last_updated_by, features: [:last_updated_by]])
+            end
+          else
+            {:error, :unauthorized}
+          end
 
-      iex> get_app!(123, user)
-      %App{}
-
-      iex> get_app!(456, user)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_app!(id, user) when is_binary(id) do
-    get_app!(String.to_integer(id), user)
+        _ ->
+          {:error, :workspace_not_found}
+      end
+    end
   end
 
-  def get_app!(id, user) when is_integer(id) do
-    case get_app(id, user) do
+  def get_app!(id, user, workspace_id) when is_binary(id),
+    do: get_app!(String.to_integer(id), user, workspace_id)
+
+  def get_app!(id, user, workspace_id) when is_integer(id) do
+    case get_app(user, id, workspace_id) do
       nil -> raise Ecto.NoResultsError, queryable: App
       app -> app
     end
   end
 
-  @doc """
-  Creates a app.
-
-  ## Examples
-
-      iex> create_app(%{field: value})
-      {:ok, %App{}}
-
-      iex> create_app(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_app(attrs, user, labels \\ []) do
+  def create_app(attrs, user, workspace_id) do
     attrs =
       attrs
       |> Map.put("user_id", user.id)
       |> Map.put("last_updated_by_id", user.id)
+      |> Map.put("workspace_id", workspace_id)
 
     %App{}
     |> App.changeset(attrs)
-    |> Ecto.Changeset.put_assoc(:labels, labels)
     |> Repo.insert()
   end
 
-  @doc """
-  Updates a app.
-
-  ## Examples
-
-      iex> update_app(app, %{field: new_value})
-      {:ok, %App{}}
-
-      iex> update_app(app, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def update_app(%App{} = app, attrs, labels \\ nil, updated_by \\ nil) do
+  def update_app(%App{} = app, attrs, updated_by \\ nil) do
     attrs = if updated_by, do: Map.put(attrs, "last_updated_by_id", updated_by.id), else: attrs
-    changeset = App.changeset(app, attrs)
-
-    changeset =
-      if labels do
-        Ecto.Changeset.put_assoc(changeset, :labels, labels)
-      else
-        changeset
-      end
-
-    Repo.update(changeset)
+    app |> App.changeset(attrs) |> Repo.update()
   end
 
-  @doc """
-  Deletes a app.
+  def delete_app(%App{} = app), do: Repo.delete(app)
+  def change_app(%App{} = app, attrs \\ %{}), do: App.changeset(app, attrs)
 
-  ## Examples
+  def create_example_app(user, workspace_id) do
+    # 1. Create Example App
+    app_attrs = %{
+      "name" => "Example Project",
+      "description" => "This is a pre-configured architecture roadmap to show you the system.",
+      "category" => "Engineering",
+      "status" => "Planned",
+      "icon" => "sparkles"
+    }
 
-      iex> delete_app(app)
-      {:ok, %App{}}
-
-      iex> delete_app(app)
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def delete_app(%App{} = app) do
-    Repo.delete(app)
+    with {:ok, app} <- create_app(app_attrs, user, workspace_id),
+         # 2. Create Example Feature
+         feature_attrs <- %{
+           "title" => "Core Infrastructure",
+           "description" => "Setup basic API and database schemas.",
+           "status" => "In Progress",
+           "icon" => "cpu-chip",
+           "app_id" => app.id
+         },
+         {:ok, feature} <- create_feature(feature_attrs, user),
+         # 3. Create Example Tasks
+         _ <-
+           create_task(%{
+             "title" => "Define Ecto Schemas",
+             "status" => "Todo",
+             "feature_id" => feature.id,
+             "icon" => "document-plus",
+             "description" => "Draft initial database structure.",
+             "position" => 1
+           }),
+         _ <-
+           create_task(%{
+             "title" => "Implement Auth logic",
+             "status" => "In Progress",
+             "feature_id" => feature.id,
+             "icon" => "key",
+             "description" => "Secure endpoints with magic links.",
+             "position" => 1
+           }) do
+      {:ok, app}
+    end
   end
 
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking app changes.
+  # ============================================================================
+  # Feature Context
+  # ============================================================================
 
-  ## Examples
+  def list_features(%Accounts.User{} = current_user, app_id \\ nil, workspace_id) do
+    cond do
+      is_nil(workspace_id) ->
+        []
 
-      iex> change_app(app)
-      %Ecto.Changeset{data: %App{}}
+      is_nil(app_id) ->
+        Feature
+        |> join(:inner, [f], a in App, on: f.app_id == a.id)
+        |> where([f, a], a.workspace_id == ^workspace_id)
+        |> order_by([f], desc: f.updated_at)
+        |> Repo.all()
+        |> Repo.preload([:app, :last_updated_by])
 
-  """
-  def change_app(%App{} = app, attrs \\ %{}) do
-    App.changeset(app, attrs)
+      true ->
+        case get_app(current_user, app_id, workspace_id) do
+          %App{} = app ->
+            Feature
+            |> where([f], f.app_id == ^app.id)
+            |> order_by([f], desc: f.updated_at)
+            |> Repo.all()
+            |> Repo.preload([:app, :last_updated_by])
+
+          _ ->
+            []
+        end
+    end
   end
 
-  alias AppPlanner.Planner.Feature
+  def get_feature!(id, user, workspace_id) do
+    feature =
+      Feature |> where([f], f.id == ^id) |> Repo.one!() |> Repo.preload([:app, :last_updated_by])
 
-  @doc """
-  Returns the list of features.
-
-  ## Examples
-
-      iex> list_features()
-      [%Feature{}, ...]
-
-  """
-  def list_features(user) do
-    app_ids = list_apps(user) |> Enum.map(& &1.id)
-
-    Feature
-    |> where([f], f.app_id in ^app_ids)
-    |> order_by([f], desc: f.updated_at)
-    |> Repo.all()
-    |> Repo.preload([:app, :last_updated_by])
+    case get_app(user, feature.app_id, workspace_id) do
+      %App{} -> feature
+      _ -> raise Ecto.NoResultsError, queryable: Feature
+    end
   end
 
-  @doc """
-  Gets a single feature.
-
-  Raises `Ecto.NoResultsError` if the Feature does not exist.
-
-  ## Examples
-
-      iex> get_feature!(123)
-      %Feature{}
-
-      iex> get_feature!(456)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_feature!(id, user) do
-    member_app_ids =
-      AppMember
-      |> where([m], m.user_id == ^user.id)
-      |> select([m], m.app_id)
-
-    Feature
-    |> join(:inner, [f], a in App, on: f.app_id == a.id)
-    |> where(
-      [f, a],
-      f.id == ^id and
-        (f.user_id == ^user.id or a.user_id == ^user.id or a.id in subquery(member_app_ids))
-    )
-    |> select([f, _], f)
-    |> Repo.one!()
-    |> Repo.preload([:app, :last_updated_by])
-  end
-
-  @doc """
-  Creates a feature.
-
-  ## Examples
-
-      iex> create_feature(%{field: value})
-      {:ok, %Feature{}}
-
-      iex> create_feature(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
   def create_feature(attrs, user) do
-    attrs =
-      attrs
-      |> Map.put("user_id", user.id)
-      |> Map.put("last_updated_by_id", user.id)
-
-    %Feature{}
-    |> Feature.changeset(attrs)
-    |> Repo.insert()
+    attrs = attrs |> Map.put("user_id", user.id) |> Map.put("last_updated_by_id", user.id)
+    %Feature{} |> Feature.changeset(attrs) |> Repo.insert()
   end
 
-  @doc """
-  Updates a feature.
-
-  ## Examples
-
-      iex> update_feature(feature, %{field: new_value})
-      {:ok, %Feature{}}
-
-      iex> update_feature(feature, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
   def update_feature(%Feature{} = feature, attrs, updated_by \\ nil) do
     attrs = if updated_by, do: Map.put(attrs, "last_updated_by_id", updated_by.id), else: attrs
-
-    feature
-    |> Feature.changeset(attrs)
-    |> Repo.update()
+    feature |> Feature.changeset(attrs) |> Repo.update()
   end
 
-  @doc """
-  Deletes a feature.
-
-  ## Examples
-
-      iex> delete_feature(feature)
-      {:ok, %Feature{}}
-
-      iex> delete_feature(feature)
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def delete_feature(%Feature{} = feature) do
-    Repo.delete(feature)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking feature changes.
-
-  ## Examples
-
-      iex> change_feature(feature)
-      %Ecto.Changeset{data: %Feature{}}
-
-  """
-  def change_feature(%Feature{} = feature, attrs \\ %{}) do
-    Feature.changeset(feature, attrs)
-  end
-
-  # Label context functions
-
-  def list_labels(user) do
-    Label
-    |> where([l], l.user_id == ^user.id)
+  def list_features(app_id) do
+    Feature
+    |> where([f], f.app_id == ^app_id)
+    |> order_by([f], asc: f.inserted_at)
     |> Repo.all()
   end
 
-  def change_label(%Label{} = label, attrs \\ %{}) do
-    Label.changeset(label, attrs)
+  def delete_feature(%Feature{} = feature), do: Repo.delete(feature)
+  def change_feature(%Feature{} = feature, attrs \\ %{}), do: Feature.changeset(feature, attrs)
+
+  # ============================================================================
+  # Task Context
+  # ============================================================================
+
+  @default_task_statuses ["Todo", "In Progress", "Done", "Blocked", "Archived"]
+  def task_statuses(workspace \\ nil) do
+    if workspace && workspace.status_config && workspace.status_config["statuses"] do
+      workspace.status_config["statuses"]
+    else
+      @default_task_statuses
+    end
   end
 
-  def create_label(attrs, user) do
-    attrs = Map.put(attrs, "user_id", user.id)
-
-    %Label{}
-    |> Label.changeset(attrs)
-    |> Repo.insert()
+  def list_tasks_by_feature(feature_id) do
+    Task
+    |> where([t], t.feature_id == ^feature_id and is_nil(t.parent_task_id))
+    |> order_by([t], asc: t.position)
+    |> Repo.all()
+    |> Repo.preload([:assignee, :subtasks, :comments])
   end
 
-  def duplicate_app(original_app, user) do
-    original_app = Repo.preload(original_app, :features)
+  def list_tasks_by_feature_grouped(feature_id, statuses \\ nil) do
+    tasks = list_tasks_by_feature(feature_id)
+    statuses = statuses || @default_task_statuses
+
+    statuses
+    |> Enum.map(fn status -> {status, Enum.filter(tasks, &(&1.status == status))} end)
+    |> Enum.into(%{})
+  end
+
+  def get_task!(id) do
+    Task
+    |> Repo.get!(id)
+    |> Repo.preload([:feature, :assignee, :subtasks, comments: [:user], parent_task: []])
+  end
+
+  def create_task(attrs, user \\ nil) do
+    feature_id = attrs["feature_id"] || attrs[:feature_id]
+    status = attrs["status"] || attrs[:status] || "Todo"
+
+    max_position =
+      Task
+      |> where([t], t.feature_id == ^feature_id and t.status == ^status)
+      |> select([t], max(t.position))
+      |> Repo.one() || 0
+
+    attrs = Map.put(attrs, "position", max_position + 1)
 
     Repo.transaction(fn ->
-      new_app_attrs = %{
-        name: "Copy of #{original_app.name}",
-        icon: original_app.icon,
-        description: original_app.description,
-        status: "Idea",
-        visibility: "private",
-        category: original_app.category,
-        custom_fields: original_app.custom_fields,
-        pr_link: nil
-      }
+      case %Task{} |> Task.changeset(attrs) |> Repo.insert() do
+        {:ok, task} ->
+          if user, do: create_task_history(task, user, "created", %{title: task.title})
+          task
 
-      {:ok, new_app} = create_app(new_app_attrs, user)
-
-      for feature <- original_app.features do
-        feature_attrs = %{
-          title: feature.title,
-          description: feature.description,
-          how_to_add: feature.how_to_add,
-          why: feature.why,
-          pros: feature.pros,
-          cons: feature.cons,
-          implementation_date: feature.implementation_date,
-          how_to_implement: feature.how_to_implement,
-          why_need: feature.why_need,
-          time_estimate: feature.time_estimate,
-          app_id: new_app.id
-        }
-
-        create_feature(feature_attrs, user)
+        {:error, changeset} ->
+          Repo.rollback(changeset)
       end
-
-      Repo.preload(new_app, [
-        :user,
-        :labels,
-        :features,
-        :children,
-        :last_updated_by,
-        :likes,
-        app_members: [:user]
-      ])
     end)
   end
 
-  # App members (team access for private apps)
-  def list_app_members(%App{} = app) do
-    AppMember
-    |> where([m], m.app_id == ^app.id)
+  def update_task(%Task{} = task, attrs, user \\ nil) do
+    Repo.transaction(fn ->
+      case task |> Task.changeset(attrs) |> Repo.update() do
+        {:ok, updated_task} ->
+          if user, do: create_task_history(updated_task, user, "updated", attrs)
+          updated_task
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  def update_task_status(%Task{} = task, new_status, new_position, user \\ nil) do
+    Repo.transaction(fn ->
+      Task
+      |> where(
+        [t],
+        t.feature_id == ^task.feature_id and t.status == ^new_status and
+          t.position >= ^new_position and t.id != ^task.id
+      )
+      |> Repo.update_all(inc: [position: 1])
+
+      case task
+           |> Task.changeset(%{status: new_status, position: new_position})
+           |> Repo.update() do
+        {:ok, updated_task} ->
+          if user,
+            do:
+              create_task_history(updated_task, user, "moved", %{
+                from: task.status,
+                to: new_status
+              })
+
+          updated_task
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  def delete_task(%Task{} = task), do: Repo.delete(task)
+  def change_task(%Task{} = task, attrs \\ %{}), do: Task.changeset(task, attrs)
+
+  def list_subtasks(parent_task_id) do
+    Task
+    |> where([t], t.parent_task_id == ^parent_task_id)
+    |> order_by([t], asc: t.position)
+    |> Repo.all()
+    |> Repo.preload([:assignee])
+  end
+
+  # ============================================================================
+  # Task History
+  # ============================================================================
+
+  def list_task_history(task_id) do
+    TaskHistory
+    |> where([h], h.task_id == ^task_id)
+    |> order_by([h], desc: h.inserted_at)
     |> Repo.all()
     |> Repo.preload(:user)
   end
 
-  def add_app_member(%App{} = app, %AppPlanner.Accounts.User{} = user, role \\ "viewer") do
-    %AppMember{}
-    |> AppMember.changeset(%{app_id: app.id, user_id: user.id, role: role})
+  def create_task_history(task, user, action, details) do
+    %TaskHistory{}
+    |> TaskHistory.changeset(%{
+      task_id: task.id,
+      user_id: user.id,
+      action: action,
+      details: details
+    })
     |> Repo.insert()
   end
 
-  def remove_app_member(%App{} = app, user_id) do
-    AppMember
-    |> where([m], m.app_id == ^app.id and m.user_id == ^user_id)
-    |> Repo.delete_all()
+  def can_edit_app?(%Accounts.User{} = user, %AppPlanner.Planner.App{} = app) do
+    app.user_id == user.id or Accounts.super_admin?(user)
   end
 
-  def can_edit_app?(%App{} = app, %AppPlanner.Accounts.User{} = user) do
-    app.user_id == user.id or
-      Enum.any?(app.app_members || [], fn m -> m.user_id == user.id and m.role == "editor" end)
+  # ============================================================================
+  # Task Comment Context
+  # ============================================================================
+
+  def create_task_comment(attrs) do
+    %TaskComment{}
+    |> AppPlanner.Planner.TaskComment.changeset(attrs)
+    |> Repo.insert()
   end
 
-  def can_view_app?(%App{} = app, %AppPlanner.Accounts.User{} = user) do
-    app.user_id == user.id or
-      String.downcase(app.visibility || "") == "public" or
-      Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end)
-  end
-
-  # Like functionality
-  alias AppPlanner.Planner.Like
-
-  def like_app(app_id, user_id) do
-    result =
-      %Like{}
-      |> Like.changeset(%{app_id: app_id, user_id: user_id})
-      |> Repo.insert()
-
-    broadcast_update(app_id)
-    result
-  end
-
-  def unlike_app(app_id, user_id) do
-    result =
-      Like
-      |> where([l], l.app_id == ^app_id and l.user_id == ^user_id)
-      |> Repo.delete_all()
-
-    broadcast_update(app_id)
-    result
-  end
-
-  defp broadcast_update(app_id) do
-    Phoenix.PubSub.broadcast(AppPlanner.PubSub, "app_updates", {:app_updated, app_id})
-  end
-
-  def liked_by?(app, user) do
-    Enum.any?(app.likes || [], fn like -> like.user_id == user.id end)
+  def delete_task_comment(%AppPlanner.Planner.TaskComment{} = comment) do
+    Repo.delete(comment)
   end
 end

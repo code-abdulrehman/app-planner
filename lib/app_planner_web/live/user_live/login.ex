@@ -6,94 +6,69 @@ defmodule AppPlannerWeb.UserLive.Login do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm space-y-4">
-        <div class="text-center">
-          <.header>
-            <p>Log in</p>
-            <:subtitle>
-              <%= if @current_scope do %>
-                You need to reauthenticate to perform sensitive actions on your account.
-              <% else %>
-                Don't have an account? <.link
-                  navigate={~p"/users/register"}
-                  class="font-semibold text-brand hover:underline"
-                  phx-no-format
-                >Sign up</.link> for an account now.
-              <% end %>
-            </:subtitle>
-          </.header>
-        </div>
-
-        <div :if={dev_mode?() && local_mail_adapter?()} class="alert alert-info">
-          <.icon name="hero-information-circle" class="size-6 shrink-0" />
-          <div>
-            <p>You are running the local mail adapter.</p>
-            <p>
-              To see sent emails, visit <.link href="/dev/mailbox" class="underline">the mailbox page</.link>.
-            </p>
-          </div>
-        </div>
-
-        <.form
-          :let={f}
-          for={@form}
-          id="login_form_magic"
-          action={~p"/users/log-in"}
-          phx-submit="submit_magic"
-        >
-          <.input
-            readonly={!!@current_scope}
-            field={f[:email]}
-            type="email"
-            label="Email"
-            autocomplete="email"
-            required
-            phx-mounted={JS.focus()}
-          />
-          <.button class="btn btn-primary w-full">
-            Log in with email <span aria-hidden="true">→</span>
-          </.button>
-        </.form>
-
-        <div class="divider">or</div>
-
-        <.form
-          :let={f}
-          for={@form}
-          id="login_form_password"
-          action={~p"/users/log-in"}
-          phx-submit="submit_password"
-          phx-trigger-action={@trigger_submit}
-        >
-          <.input
-            readonly={!!@current_scope}
-            field={f[:email]}
-            type="email"
-            label="Email"
-            autocomplete="email"
-            required
-          />
-          <.input
-            field={@form[:password]}
-            type="password"
-            label="Password"
-            autocomplete="current-password"
-          />
-          <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
-            Log in and stay logged in <span aria-hidden="true">→</span>
-          </.button>
-          <.button class="btn btn-primary btn-soft w-full mt-2">
-            Log in only this time
-          </.button>
-          <p class="text-center text-sm text-base-content/60 mt-2">
-            <.link navigate={~p"/users/forgot-password"} class="link link-hover">
-              Forgot password?
-            </.link>
+    <div class="max-w-md mx-auto py-24 px-6 text-center">
+       <div class="mb-12">
+          <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">A</div>
+          <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Welcome Back</h1>
+          <p class="text-sm text-base-content/40 font-medium italic">
+            <%= if @current_scope do %>
+              Identity verification required
+            <% else %>
+              Don't have an account? <.link navigate={~p"/users/register"} class="text-primary hover:underline font-bold">Register</.link>
+            <% end %>
           </p>
-        </.form>
-      </div>
-    </Layouts.app>
+       </div>
+
+       <div class="bg-base-50/50 border border-base-200 rounded-lg p-8 space-y-8">
+          <.form
+            :let={f}
+            for={@form}
+            id="login_form_magic"
+            action={~p"/users/log-in"}
+            phx-submit="submit_magic"
+            class="space-y-6"
+          >
+            <div class="form-control text-left">
+               <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">Email Address</span></label>
+               <.input readonly={!!@current_scope} field={f[:email]} type="email" placeholder="name@example.com" required class="input input-bordered w-full rounded-lg bg-base-100 font-bold" />
+            </div>
+            <button type="submit" class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+              Send Magic Link
+            </button>
+          </.form>
+
+          <div class="divider text-[10px] font-black uppercase text-base-content/20 tracking-widest">or use password</div>
+
+          <.form
+            :let={f}
+            for={@form}
+            id="login_form_password"
+            action={~p"/users/log-in"}
+            phx-submit="submit_password"
+            phx-trigger-action={@trigger_submit}
+            class="space-y-6"
+          >
+            <div class="form-control text-left">
+               <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">Password</span></label>
+               <.input field={@form[:password]} type="password" placeholder="••••••••" required class="input input-bordered w-full rounded-lg bg-base-100 font-bold" />
+            </div>
+
+            <div class="flex items-center justify-between">
+               <div class="flex items-center gap-2">
+                  <input type="checkbox" name={@form[:remember_me].name} value="true" class="checkbox checkbox-primary checkbox-xs rounded" />
+                  <span class="text-[10px] font-black uppercase text-base-content/40 tracking-widest">Stay logged in</span>
+               </div>
+               <.link navigate={~p"/users/forgot-password"} class="text-[10px] font-black uppercase text-primary tracking-widest hover:underline">
+                 Reset Password
+               </.link>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+              Log In
+            </button>
+          </.form>
+       </div>
+    </div>
     """
   end
 

@@ -17,7 +17,7 @@
       <div class="mt-10 flex items-center justify-center gap-x-6">
         <%= if @current_scope && @current_scope.user do %>
           <.link
-            href={~p"/apps"}
+            href={~p"/workspaces/#{@current_scope.current_workspace.id}/apps"}
             class="btn btn-primary btn-lg px-8 py-3 rounded-full text-lg font-bold shadow-lg hover:shadow-primary/50 transition-all"
           >
             Launch My Apps
@@ -135,7 +135,7 @@
         <div class="flex gap-6">
           <.link href={~p"/"} class="hover:text-base-content transition-colors">Home</.link>
           <%= if @current_scope && @current_scope.user do %>
-            <.link href={~p"/apps"} class="hover:text-base-content transition-colors">Projects</.link>
+            <.link href={~p"/workspaces/#{@current_scope.current_workspace.id}/apps"} class="hover:text-base-content transition-colors">Projects</.link>
             <.link href={~p"/users/forgot-password"} class="hover:text-base-content transition-colors">Settings</.link>
           <% else %>
             <.link href={~p"/users/log-in"} class="hover:text-base-content transition-colors">Sign In</.link>

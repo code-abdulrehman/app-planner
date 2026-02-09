@@ -6,92 +6,98 @@ defmodule AppPlannerWeb.FeatureLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
-      <.header>
-        <div class="flex flex-col gap-1">
-          <div :if={@app} class="mb-2">
-            <.link navigate={~p"/apps/#{@app}"} class="btn btn-ghost btn-xs gap-2 text-gray-400 hover:text-primary p-0">
-               <.icon name="hero-arrow-left" class="w-3 h-3" /> Back to {@app.name}
-            </.link>
-          </div>
-          <h1 class="text-2xl font-black">
-            <%= if @app, do: "Features for #{@app.name}", else: "Listing All Features" %>
+    <div class="max-w-6xl mx-auto py-12 px-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
+        <div>
+          <h1 class="text-4xl font-black tracking-tight text-base-content mb-2">
+            <%= if @app, do: @app.name, else: "All Modules" %>
           </h1>
+          <div class="flex items-center gap-3">
+             <span class="w-2 h-2 rounded-full bg-primary"></span>
+             <p class="text-base-content/40 text-[10px] font-black uppercase tracking-widest font-medium italic"><%= if @app, do: "Project scope", else: "Global roadmap" %></p>
+          </div>
         </div>
-        <:actions>
-          <.button variant="primary" navigate={if @app, do: ~p"/features/new?app_id=#{@app.id}&return_to=app", else: ~p"/features/new"}>
-            <.icon name="hero-plus" /> New Feature
-          </.button>
-        </:actions>
-      </.header>
 
-      <div class="max-w-5xl mx-auto border-t border-base-200 mt-8" id="features" phx-update="stream">
-        <div :for={{id, feature} <- @streams.features} id={id} class="group border-b border-base-200 hover:bg-base-200/50 transition-all px-4 py-6 flex items-center justify-between gap-6">
-            <div class="flex items-center gap-5 cursor-pointer flex-1" phx-click={JS.navigate(~p"/features/#{feature}")}>
-               <div class="w-10 h-10 rounded-lg bg-base-200 flex items-center justify-center text-gray-400 group-hover:bg-primary group-hover:text-primary-content transition-all border">
-                  <.icon name={if feature.icon, do: "hero-#{feature.icon}", else: "hero-bolt"} class="w-5 h-5" />
+        <.link navigate={if @app, do: ~p"/workspaces/#{@current_workspace.id}/apps/#{@app.id}/features/new?return_to=app", else: ~p"/workspaces/#{@current_workspace.id}/features/new"} class="btn btn-primary rounded-lg px-8 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20">
+           <div class="flex items-center gap-2">
+              <.icon name="hero-plus" class="w-4 h-4" /> Add Module
+           </div>
+        </.link>
+      </div>
+
+      <div class="bg-base-50/50 border border-base-200 rounded-lg overflow-hidden" id="features" phx-update="stream">
+        <div :for={{id, feature} <- @streams.features} id={id} class="group border-b border-base-200 hover:bg-base-100 transition-all px-8 py-6 flex items-center justify-between gap-6">
+            <div class="flex items-center gap-6 cursor-pointer flex-1" phx-click={JS.navigate(~p"/workspaces/#{@current_workspace.id}/apps/#{feature.app_id}/features/#{feature.id}/tasks")}>
+               <div class="w-12 h-12 rounded-lg bg-base-100 border border-base-200 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                  <.icon name={if feature.icon, do: "hero-#{feature.icon}", else: "hero-bolt"} class="w-6 h-6" />
                </div>
                <div>
-                  <h3 class="text-base font-bold tracking-tight mb-0.5">{feature.title}</h3>
-                  <div class="flex gap-3 items-center text-[10px] text-gray-400 font-bold uppercase tracking-widest flex-wrap">
-                    <span>{feature.time_estimate || "No est."}</span>
+                  <h3 class="text-lg font-black tracking-tight mb-1 group-hover:text-primary transition-colors">{feature.title}</h3>
+                  <div class="flex gap-3 items-center text-[10px] text-base-content/30 font-black uppercase tracking-widest flex-wrap">
+                    <span :if={feature.app} class="text-primary">{feature.app.name}</span>
+                    <span :if={feature.app}>•</span>
+                    <span>{feature.status}</span>
                     <span>•</span>
-                    <span>{feature.implementation_date || "No date"}</span>
-                    <span :if={feature.app}>• {feature.app.name}</span>
-                    <%= if feature.pr_link && feature.pr_link != "" do %>
-                      <a href={feature.pr_link} target="_blank" rel="noopener noreferrer" class="text-primary hover:underline" phx-click-stop>GIT</a>
-                    <% end %>
+                    <span>{feature.time_estimate || "No Estimate"}</span>
                   </div>
                </div>
             </div>
 
-            <div class="flex items-center gap-2">
-              <.link navigate={~p"/features/#{feature}/edit"} class="btn btn-ghost btn-xs text-gray-400 hover:text-primary">
-                 <.icon name="hero-pencil" class="w-4 h-4" />
+            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{feature.app_id}/features/#{feature.id}/edit"} class="btn btn-ghost btn-xs rounded-md border border-base-200 hover:text-primary">
+                 <.icon name="hero-pencil" class="w-3.5 h-3.5" />
               </.link>
-              <.link
+              <button
                 phx-click={JS.push("delete", value: %{id: feature.id}) |> hide("##{id}")}
-                data-confirm="Are you sure?"
-                class="btn btn-ghost btn-xs text-gray-400 hover:text-error"
+                data-confirm="Delete this module?"
+                class="btn btn-ghost btn-xs rounded-md border border-base-200 text-error hover:bg-error/5"
               >
-                <.icon name="hero-trash" class="w-4 h-4" />
-              </.link>
+                <.icon name="hero-trash" class="w-3.5 h-3.5" />
+              </button>
             </div>
         </div>
       </div>
-    </Layouts.app>
+    </div>
     """
   end
 
   @impl true
-  def mount(params, _session, socket) do
+  def mount(%{"workspace_id" => _workspace_id} = params, _session, socket) do
     user = socket.assigns.current_scope.user
+    current_workspace = socket.assigns.current_workspace
 
     app =
       case params["app_id"] do
-        nil -> nil
+        nil ->
+          nil
+
         id ->
           app_id = if is_binary(id), do: String.to_integer(id), else: id
-          Planner.get_app(app_id, user)
+          # Corrected call
+          Planner.get_app(user, app_id, current_workspace.id)
       end
 
     if params["app_id"] != nil and app == nil do
       {:ok,
        socket
        |> put_flash(:error, "This project is no longer available.")
-       |> push_navigate(to: ~p"/apps")}
+       # Corrected routing
+       |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
     else
       features =
         if app do
           Enum.map(app.features, &%{&1 | app: app})
         else
-          Planner.list_features(user)
+          # Corrected call
+          Planner.list_features(user, nil, current_workspace.id)
         end
 
       {:ok,
        socket
        |> assign(:page_title, if(app, do: "Features for #{app.name}", else: "Listing Features"))
        |> assign(:app, app)
+       # Assign current_workspace
+       |> assign(:current_workspace, current_workspace)
        |> stream(:features, features)}
     end
   end
@@ -99,7 +105,8 @@ defmodule AppPlannerWeb.FeatureLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     user = socket.assigns.current_scope.user
-    feature = Planner.get_feature!(id, user)
+    current_workspace = socket.assigns.current_workspace
+    feature = Planner.get_feature!(id, user, current_workspace.id)
     {:ok, _} = Planner.delete_feature(feature)
 
     {:noreply, stream_delete(socket, :features, feature)}

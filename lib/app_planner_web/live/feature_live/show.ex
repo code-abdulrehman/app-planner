@@ -6,129 +6,198 @@ defmodule AppPlannerWeb.FeatureLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
-      <.breadcrumb items={breadcrumb_items_feature_show(@feature)} />
+    <div class="max-w-5xl mx-auto py-12 px-6">
+      <nav class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-base-content/30 mb-10 border-b border-base-200 pb-4">
+        <.link navigate={~p"/workspaces"} class="hover:text-primary transition-colors">Workspace</.link>
+        <span>/</span>
+        <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@feature.app_id}"} class="hover:text-primary transition-colors">Project</.link>
+        <span>/</span>
+        <span class="text-base-content/80 font-bold truncate">{@feature.title}</span>
+      </nav>
 
-      <div class="flex justify-between items-start border-b pb-8 mb-10">
-        <div class="flex items-start gap-3">
-          <div class="text-primary">
-            <.icon name={if @feature.icon, do: "hero-#{@feature.icon}", else: "hero-bolt"} class="w-8 h-8" />
-          </div>
-          <div>
-            <h1 class="text-2xl font-bold">{@feature.title}</h1>
-          <div class="flex items-center gap-2 mt-1">
-            <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Feature Roadmap</p>
-            <span :if={@feature.status} class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-base-200 text-base-content/80">{@feature.status}</span>
-          </div>
+      <div class="flex flex-col lg:flex-row justify-between items-start gap-12 mb-16">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-5">
+            <div class="w-16 h-16 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shadow-sm group">
+              <.icon name={if @feature.icon, do: "hero-#{@feature.icon}", else: "hero-bolt"} class="w-8 h-8 group-hover:scale-110 transition-transform" />
+            </div>
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <span class="text-[9px] font-black uppercase text-primary tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10">Module</span>
+                <span :if={@feature.status} class="text-[9px] font-black uppercase text-base-content/40 tracking-widest px-2 py-0.5 rounded border border-base-200">{@feature.status}</span>
+              </div>
+              <h1 class="text-3xl font-black tracking-tight text-base-content leading-tight">{@feature.title}</h1>
+            </div>
           </div>
         </div>
-        <div class="flex gap-2">
-          <.link navigate={~p"/features/#{@feature}/edit?return_to=show"} class="btn btn-sm btn-ghost">Edit</.link>
+        <div class="flex items-center gap-2 shrink-0">
+          <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@feature.app_id}/features/#{@feature.id}/tasks"} class="btn btn-primary btn-sm rounded-lg px-6 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+            <.icon name="hero-view-columns" class="w-3.5 h-3.5 mr-2" /> Tasks
+          </.link>
+          <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@feature.app_id}/features/#{@feature.id}/edit?return_to=show"} class="btn btn-outline btn-sm rounded-lg px-6 text-[10px] font-black uppercase tracking-widest border-base-200 hover:bg-base-100 transition-all">
+            <.icon name="hero-pencil" class="w-3.5 h-3.5 mr-2" /> Edit
+          </.link>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-16">
-         <div class="space-y-10">
-            <div class="flex flex-col">
-              <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Rationale</label>
-              <.markdown content={@feature.why_need} />
-            </div>
-
-            <div class="flex flex-col">
-              <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Description</label>
-              <.markdown content={@feature.description} />
-            </div>
-
-            <div class="grid grid-cols-2 gap-8 pt-8 border-t">
-               <div :if={@feature.time_estimate} class="flex flex-col">
-                 <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Time Effort</label>
-                 <span class="text-sm font-bold">{@feature.time_estimate}</span>
-               </div>
-               <div :if={@feature.implementation_date} class="flex flex-col">
-                 <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Target Date</label>
-                 <span class="text-sm font-bold">{@feature.implementation_date}</span>
-               </div>
-            </div>
-            <%= if @feature.pr_link && @feature.pr_link != "" do %>
-              <div class="flex flex-col pt-6">
-                <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Git / PR link</label>
-                <a href={@feature.pr_link} target="_blank" rel="noopener noreferrer" class="text-sm font-bold text-primary hover:underline flex items-center gap-2 uppercase tracking-tighter">
-                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.042-1.416-4.042-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                  Source / PR
-                </a>
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
+        <div class="lg:col-span-3 space-y-12">
+           <section :if={@feature.why_need}>
+              <div class="flex items-center gap-3 mb-6">
+                 <div class="w-7 h-7 rounded bg-base-100 border border-base-200 flex items-center justify-center">
+                    <.icon name="hero-light-bulb" class="w-3.5 h-3.5 text-base-content/40" />
+                 </div>
+                 <h3 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">Why this module?</h3>
               </div>
-            <% end %>
-         </div>
+              <div class="bg-base-50/50 p-8 rounded-xl border border-base-200">
+                 <div class="prose prose-sm max-w-none text-base-content/70 leading-relaxed font-medium italic">
+                    <.markdown content={@feature.why_need} compact />
+                 </div>
+              </div>
+           </section>
 
-         <div class="space-y-10">
-            <div class="flex flex-col">
-              <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Implementation Path</label>
+           <section :if={@feature.description}>
+              <div class="flex items-center gap-3 mb-6">
+                 <div class="w-7 h-7 rounded bg-base-100 border border-base-200 flex items-center justify-center">
+                    <.icon name="hero-document-text" class="w-3.5 h-3.5 text-base-content/40" />
+                 </div>
+                 <h3 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">Description</h3>
+              </div>
+              <div class="prose prose-sm max-w-none text-base-content/70 leading-relaxed font-medium">
+                 <.markdown content={@feature.description} />
+              </div>
+           </section>
+
+           <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div class="space-y-6">
-                 <div class="border-l-2 border-base-200 pl-4 py-1 text-sm">
-                    <span class="text-[9px] font-black uppercase text-gray-400 block mb-1">User Flow</span>
-                    <.markdown content={@feature.how_to_add} class="text-xs" />
-                 </div>
-                 <div class="border-l-2 border-base-200 pl-4 py-1 text-sm">
-                    <span class="text-[9px] font-black uppercase text-gray-400 block mb-1">Technical Strategy</span>
-                    <.markdown content={@feature.how_to_implement} class="text-xs" />
-                 </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-8 pt-8 border-t">
-               <div class="flex flex-col">
-                 <label class="text-[10px] font-black uppercase text-success/60 tracking-widest mb-2">Pros</label>
-                 <.markdown content={@feature.pros} class="text-xs" />
-               </div>
-               <div class="flex flex-col">
-                 <label class="text-[10px] font-black uppercase text-error/60 tracking-widest mb-2">Cons</label>
-                 <.markdown content={@feature.cons} class="text-xs" />
-               </div>
-            </div>
-
-            <%= if @feature.custom_fields && map_size(@feature.custom_fields) > 0 do %>
-              <div class="flex flex-col gap-4 pt-8 border-t">
-                <label class="text-[10px] font-black uppercase text-gray-400 tracking-widest">Technical Metadata</label>
-                <div class="space-y-3">
-                  <%= for {key, value} <- @feature.custom_fields do %>
-                    <div class="flex flex-col border-l-2 border-base-200 pl-3 py-0.5">
-                      <span class="text-[9px] font-black uppercase text-gray-400 leading-none mb-1">{key}</span>
-                       <%= if String.contains?(value, "http") do %>
-                           <a href={value} target="_blank" class="text-primary hover:underline text-xs font-mono font-bold tracking-tight line-clamp-1">{value}</a>
-                         <% else %>
-                         <span class="text-xs font-mono font-bold tracking-tight line-clamp-1">
-                           {value}
-                         </span>
-                         <% end %>
+                 <div class="flex items-center gap-3">
+                    <div class="w-7 h-7 rounded bg-base-100 border border-base-200 flex items-center justify-center">
+                       <.icon name="hero-arrow-path" class="w-3.5 h-3.5 text-base-content/40" />
                     </div>
-                  <% end %>
-                </div>
+                    <h3 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">Execution</h3>
+                 </div>
+                 <div class="space-y-4">
+                    <div :if={@feature.how_to_add} class="border-l-2 border-base-200 pl-4 py-1">
+                       <span class="text-[9px] font-black uppercase text-base-content/20 tracking-widest block mb-1">User Flow</span>
+                       <div class="prose prose-xs text-base-content/60 italic leading-relaxed">
+                          <.markdown content={@feature.how_to_add} compact />
+                       </div>
+                    </div>
+                    <div :if={@feature.how_to_implement} class="border-l-2 border-base-200 pl-4 py-1">
+                       <span class="text-[9px] font-black uppercase text-base-content/20 tracking-widest block mb-1">Technical Strategy</span>
+                       <div class="prose prose-xs text-base-content/60 italic leading-relaxed">
+                          <.markdown content={@feature.how_to_implement} compact />
+                       </div>
+                    </div>
+                 </div>
               </div>
-            <% end %>
-         </div>
+
+              <div class="space-y-6">
+                 <div class="flex items-center gap-3">
+                    <div class="w-7 h-7 rounded bg-base-100 border border-base-200 flex items-center justify-center">
+                       <.icon name="hero-shield-check" class="w-3.5 h-3.5 text-base-content/40" />
+                    </div>
+                    <h3 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">Benefits & Risks</h3>
+                 </div>
+                 <div class="grid grid-cols-1 gap-4">
+                    <div class="bg-success/5 p-4 rounded-lg border border-success/10">
+                       <h4 class="text-[9px] font-black uppercase tracking-widest text-success mb-2">Benefits</h4>
+                       <div class="prose prose-xs text-base-content/60 font-medium italic">
+                          <.markdown content={@feature.pros || "*N/A*"} compact />
+                       </div>
+                    </div>
+                    <div class="bg-error/5 p-4 rounded-lg border border-error/10">
+                       <h4 class="text-[9px] font-black uppercase tracking-widest text-error mb-2">Risks</h4>
+                       <div class="prose prose-xs text-base-content/60 font-medium italic">
+                          <.markdown content={@feature.cons || "*N/A*"} compact />
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </section>
+        </div>
+
+        <aside class="space-y-8">
+           <div class="bg-base-50/50 border border-base-200 rounded-xl p-6 space-y-8">
+              <div>
+                 <span class="text-[9px] font-black text-base-content/20 uppercase tracking-widest block mb-4">Links</span>
+                 <div class="flex flex-col gap-2">
+                    <a :if={@feature.pr_link} href={@feature.pr_link} target="_blank" class="flex items-center justify-between p-3 bg-white hover:bg-base-200 rounded-lg border border-base-200 group/link transition-all">
+                       <div class="flex items-center gap-2">
+                          <.icon name="hero-code-bracket" class="w-3.5 h-3.5 text-base-content/30 group-hover/link:text-primary transition-colors" />
+                          <span class="text-[9px] font-black uppercase text-base-content/60 tracking-wider">Source Code</span>
+                       </div>
+                       <.icon name="hero-arrow-top-right-on-square" class="w-3 h-3 text-base-content/10" />
+                    </a>
+                    <div :if={!@feature.pr_link} class="p-3 rounded-lg border border-dashed border-base-200 text-center italic text-[9px] font-bold text-base-content/20">Unlinked</div>
+                 </div>
+              </div>
+
+              <div class="bg-white rounded-lg p-5 border border-base-200 shadow-sm space-y-4">
+                 <h4 class="text-[9px] font-black uppercase tracking-widest text-base-content/20">Spec Info</h4>
+                 <div class="space-y-2">
+                    <div :if={@feature.time_estimate} class="flex items-center justify-between p-2 rounded bg-base-50 border border-base-100 text-[9px] font-bold">
+                       <span class="text-base-content/40 uppercase">Effort</span>
+                       <span class="text-base-content/70">{@feature.time_estimate}</span>
+                    </div>
+                    <div :if={@feature.implementation_date} class="flex items-center justify-between p-2 rounded bg-base-50 border border-base-100 text-[9px] font-bold">
+                       <span class="text-base-content/40 uppercase">Target</span>
+                       <span class="text-base-content/70">{@feature.implementation_date}</span>
+                    </div>
+                 </div>
+              </div>
+
+              <div :if={@feature.custom_fields && map_size(@feature.custom_fields) > 0} class="space-y-4">
+                 <span class="text-[9px] font-black text-base-content/20 uppercase tracking-widest block">Custom Attributes</span>
+                 <div class="space-y-2">
+                    <%= for {key, value} <- @feature.custom_fields do %>
+                       <div class="flex flex-col border-l-2 border-base-200 pl-3 py-0.5">
+                          <span class="text-[8px] font-black uppercase text-base-content/30 leading-none mb-1">{key}</span>
+                          <span class="text-[10px] font-bold text-base-content/70 truncate">{value}</span>
+                       </div>
+                    <% end %>
+                 </div>
+              </div>
+           </div>
+        </aside>
       </div>
-    </Layouts.app>
+    </div>
     """
   end
 
-  def breadcrumb_items_feature_show(feature) do
+  def breadcrumb_items_feature_show(feature, current_workspace) do
     app_name = if feature.app, do: feature.app.name, else: "Project"
 
     [
-      %{label: "Projects", path: ~p"/apps"},
-      %{label: app_name, path: ~p"/apps/#{feature.app_id}"},
+      %{label: "Apps", path: ~p"/workspaces/#{current_workspace.id}/apps"},
+      %{label: app_name, path: ~p"/workspaces/#{current_workspace.id}/apps/#{feature.app_id}"},
       %{label: feature.title, path: nil}
     ]
   end
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
+  def mount(%{"id" => id, "workspace_id" => workspace_id} = _params, _session, socket) do
     user = socket.assigns.current_scope.user
-    feature = Planner.get_feature!(id, user)
+    current_workspace = socket.assigns.current_workspace
+    feature = Planner.get_feature!(id, user, workspace_id)
 
     {:ok,
      socket
      |> assign(:page_title, feature.title)
-     |> assign(:feature, feature)}
+     |> assign(:feature, feature)
+     |> assign(:current_workspace, current_workspace)}
+  end
+
+  # Fallback for routes without explicit workspace_id in path (legacy routes)
+  def mount(%{"id" => id} = _params, _session, socket) do
+    user = socket.assigns.current_scope.user
+    current_workspace = socket.assigns.current_workspace
+    feature = Planner.get_feature!(id, user, current_workspace.id)
+
+    {:ok,
+     socket
+     |> assign(:page_title, feature.title)
+     |> assign(:feature, feature)
+     |> assign(:current_workspace, current_workspace)}
   end
 end

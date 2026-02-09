@@ -2,6 +2,8 @@ defmodule AppPlanner.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias AppPlanner.Planner.{UserWorkspace, Task, TaskComment}
+
   schema "users" do
     field :email, :string
     field :full_name, :string
@@ -10,6 +12,11 @@ defmodule AppPlanner.Accounts.User do
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
+
+    has_many :user_workspaces, UserWorkspace
+    has_many :workspaces, through: [:user_workspaces, :workspace]
+    has_many :tasks, Task, foreign_key: :assignee_id
+    has_many :task_comments, TaskComment
 
     timestamps(type: :utc_datetime)
   end

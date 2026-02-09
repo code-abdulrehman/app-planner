@@ -8,6 +8,7 @@ defmodule AppPlanner.Accounts do
 
   alias AppPlanner.Accounts.{User, UserToken, UserNotifier}
 
+
   ## Database getters
 
   @doc """
@@ -83,13 +84,27 @@ defmodule AppPlanner.Accounts do
     # First user (by id) becomes super_admin
     case result do
       {:ok, user} ->
-        if Repo.aggregate(User, :count, :id) == 1 do
-          case user |> Ecto.Changeset.change(%{role: "super_admin"}) |> Repo.update() do
-            {:ok, updated} -> {:ok, updated}
-            err -> err
-          end
-        else
-          {:ok, user}
+        # Create a default workspace for the new user
+        case AppPlanner.Workspaces.create_workspace(user, %{name: "My Workspace"}) do
+          {:ok, _workspace} ->
+            if Repo.aggregate(User, :count, :id) == 1 do
+              case user |> Ecto.Changeset.change(%{role: "super_admin"}) |> Repo.update() do
+                {:ok, updated} -> {:ok, updated}
+                err -> err
+              end
+            else
+              {:ok, user}
+            end
+          {:error, %Ecto.Changeset{} = changeset} ->
+            # If workspace creation fails, we might want to delete the user or log the error
+            # For now, we'll return an error associated with the user registration process
+            # or try to clean up the user if they were created.
+            # A simpler approach for a first pass is to return the workspace error.
+            # For a more robust solution, we might need a transaction.
+            {:error, changeset}
+          _ ->
+            # Catch other potential errors from create_workspace
+            {:error, :workspace_creation_failed}
         end
       error ->
         error

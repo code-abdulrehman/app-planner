@@ -6,492 +6,240 @@ defmodule AppPlannerWeb.AppLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
-      <div class="flex flex-col md:flex-row justify-between items-end gap-4 mb-8">
+    <div class="px-6 py-10 max-w-7xl mx-auto space-y-12">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
         <div>
-          <h1 class="text-3xl font-black tracking-tighter">Projects & Frameworks</h1>
-          <p class="text-gray-500 text-sm">Manage your software architecture and feature roadmap.</p>
+          <h1 class="text-5xl font-black tracking-tighter text-base-content mb-2">
+            {if @current_workspace, do: @current_workspace.name, else: "Project Library"}
+          </h1>
+          <div class="flex items-center gap-3">
+             <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+             <p class="text-base-content/50 text-xs font-black uppercase tracking-widest">Manage your projects</p>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <.button variant="primary" navigate={~p"/apps/new"} class="p-2 shadow-lg hover:shadow-primary/30 transition-all">
-            <.icon name="hero-plus" class="w-4 h-4 mr-1" /> New Project
-          </.button>
-        </div>
-      </div>
 
-      <div class="flex gap-8 mb-8 overflow-x-auto border-b">
-        <.link patch={~p"/apps?tab=my_apps"}
-           class={["pb-2 font-bold transition-all ", @active_tab == :my_apps && "border-b-2 border-primary text-primary", @active_tab != :my_apps && "text-gray-400"]}>
-           My Library  <span class="text-[10px] ml-1 bg-base-200 px-1.5 rounded">{@my_apps_count}</span>
-        </.link>
-        <.link patch={~p"/apps?tab=public_apps"}
-           class={["pb-2 font-bold transition-all ", @active_tab == :public_apps && "border-b-2 border-primary text-primary", @active_tab != :public_apps && "text-gray-400"]}>
-           Public Assets <span class="text-[10px] ml-1 bg-base-200 px-1.5 rounded">{@public_apps_count}</span>
+        <.link
+          navigate={~p"/workspaces/#{@current_workspace.id}/apps/new"}
+          class="btn btn-primary rounded-lg px-8 font-black text-[10px] uppercase tracking-widest shadow-sm shadow-primary/20 hover:scale-105 transition-all"
+        >
+          <.icon name="hero-plus" class="w-4 h-4 mr-2" /> New Project
         </.link>
       </div>
 
-      <input type="text" name="app_search" placeholder="Search by name, category, or status..." phx-keyup="search-apps" phx-debounce="200" value={@app_search} class="input input-bordered input-sm w-full max-w-md mb-4" />
+      <!-- Search & Filters -->
+      <div class="relative group">
+        <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-all group-focus-within:pl-6">
+          <.icon name="hero-magnifying-glass" class="w-5 h-5 text-base-content/20 group-focus-within:text-primary" />
+        </div>
+        <input
+          type="text"
+          phx-keyup="search"
+          phx-debounce="300"
+          placeholder="Search by name, category, or status..."
+          class="input input-bordered w-full pl-14 h-14 rounded-lg bg-base-100 border-base-200 focus:border-primary/50 focus:ring-8 focus:ring-primary/5 transition-all text-sm font-bold shadow-sm"
+        />
+      </div>
 
-      <div class={[@active_tab != :my_apps && "hidden"]} id="my-apps-list">
-        <%= if filter_apps_by_search(@my_apps_list, @app_search) == [] do %>
-          <.empty_state
-            title={if @app_search == "", do: "No projects yet", else: "No matches found"}
-            description={if @app_search == "", do: "Get started by creating your first architectural framework or project specification.", else: "Try adjusting your search or filters to find what you're looking for."}
-            icon="hero-cube-transparent"
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <%= for app <- @filtered_apps do %>
+          <div
+            class="group relative bg-base-100 border border-base-200 rounded-xl p-8 cursor-pointer hover:border-primary transition-all duration-500 hover:shadow-md overflow-hidden"
+            phx-click={JS.navigate(~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}")}
           >
-            <:action :if={@app_search == ""}>
-              <.button variant="primary" navigate={~p"/apps/new"} class="shadow-lg">
-                <.icon name="hero-plus" class="w-4 h-4 mr-1" /> Create Your First Project
-              </.button>
-            </:action>
-            <:action :if={@app_search != ""}>
-              <button phx-click={JS.set_attribute({"value", ""}, to: "input[name='app_search']") |> JS.push("search-apps", value: %{"value" => ""})} class="btn btn-ghost">
-                Clear Search
-              </button>
-            </:action>
-          </.empty_state>
-        <% else %>
-          <div :for={app <- filter_apps_by_search(@my_apps_list, @app_search)} id={"my_apps-#{app.id}"} class="group border-b border-base-200 hover:bg-base-100 transition-all py-4 flex items-center justify-between gap-4">
-              <div class="flex items-center gap-4 cursor-pointer flex-1" phx-click={JS.navigate(~p"/apps/#{app}")}>
-                 <div class="text-primary opacity-40 group-hover:opacity-100 transition-opacity">
-                    <.icon name={if app.icon, do: "hero-#{app.icon}", else: "hero-cube"} class="w-5 h-5" />
-                 </div>
-                  <div class="flex flex-col">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-sm font-bold tracking-tight">{app.name}</span>
-                      <span class={["text-[9px] uppercase font-black px-1.5 py-0.5 rounded", (app.visibility || "private") == "public" && "bg-primary/20 text-primary", (app.visibility || "private") == "private" && "bg-base-300 text-base-content/60"]}>
-                         <%= if String.contains?( app.visibility ,"public") do %>
-                            <.icon name="hero-globe-alt" class="w-3 h-3" />
-                            {app.visibility}
-                            <%else%>
-                            <.icon name="hero-lock-closed" class="w-3 h-3" />
-                            {app.visibility}
-                          <% end %>
-                      </span>
-                    </div>
-                    <div class="flex gap-2 items-center flex-wrap text-[10px] text-gray-400">
-                      <span class="uppercase font-black">{app.category}</span>
-                      <span>•</span>
-                      <span class="font-bold border rounded-sm px-1 py-[0.5px]"><%= app.status %></span>
-                      <span>•</span>
-                      <span><%= length(app.features) %> Features</span>
+            <!-- Background Decoration -->
+            <div class="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
 
-                      <%= if app.pr_link do %>
-                      <span>•</span>
-                        <a href={app.pr_link} target="_blank" class="text-gray-400 hover:text-primary font-black" phx-click-stop>GIT</a>
-                      <% end %>
-                    </div>
-                 </div>
+            <div class="flex items-start justify-between mb-8 relative">
+              <div class="p-4 bg-primary/5 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-inner">
+                <.icon name={if app.icon, do: "hero-#{app.icon}", else: "hero-cube"} class="w-8 h-8" />
               </div>
 
-              <div class="flex items-center gap-2" phx-click-stop>
-                <%!-- Like button: standalone, NOT inside dropdown so click always fires --%>
-                <button type="button" phx-click="toggle-like" phx-value-id={app.id} class={[" cursor-pointer px-1 btn-xs shrink-0", if(Planner.liked_by?(app, @current_user), do: "text-error", else: "text-gray-300")]} title="Like">
-                  <.icon name={if Planner.liked_by?(app, @current_user), do: "hero-heart-solid", else: "hero-heart"} class="w-4 h-4" />
-                  <span class="text-[10px]"><%= length(app.likes || []) %></span>
-                </button>
-
-                <div class="dropdown dropdown-hover dropdown-end">
-                  <label tabindex="0" class="btn btn-ghost btn-xs text-base-content/70 cursor-pointer">
-                    <.icon name="hero-user-group" class="w-4 h-4" />
-                    <span class="text-[10px]"><%= length(app.app_members || []) + 1 %></span>
-                  </label>
-                  <div tabindex="0" class="dropdown-content z-[100] p-3 shadow bg-base-100 rounded-lg border w-52 max-h-[200px] overflow-y-auto">
-                    <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Access</p>
-                    <ul class="text-xs space-y-1.5">
-                      <li class="truncate flex justify-between gap-2">
-                        <span>{if app.user, do: app.user.email, else: "—"}</span>
-                        <span class="text-[9px] uppercase text-primary shrink-0">Owner</span>
-                      </li>
-                      <%= for m <- app.app_members || [] do %>
-                        <li class="truncate flex justify-between gap-2">
-                          <span>{if Ecto.assoc_loaded?(m.user) && m.user, do: m.user.email, else: "—"}</span>
-                          <span class="text-[9px] uppercase text-base-content/60 shrink-0">{m.role}</span>
-                        </li>
-                      <% end %>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="dropdown dropdown-end">
-                  <label tabindex="0" class="btn btn-ghost btn-xs text-gray-400 cursor-pointer">
-                    <.icon name="hero-ellipsis-vertical" class="w-4 h-4" />
-                  </label>
-                  <ul tabindex="0" class="dropdown-content z-[100] menu p-2 shadow bg-base-100 rounded border w-40">
-                    <li><.link navigate={~p"/apps/#{app}"}>View</.link></li>
-                    <li :if={Planner.can_edit_app?(app, @current_user)}><.link navigate={~p"/apps/#{app}/edit"}>Edit</.link></li>
-                    <li :if={app.user_id == @current_user.id}>
-                      <.link phx-click={JS.push("delete", value: %{id: app.id})} data-confirm="Delete this project?">
-                        <span class="text-error">Delete</span>
-                      </.link>
-                    </li>
-                  </ul>
-                </div>
+              <div class="dropdown dropdown-end" phx-click-stop>
+                <label tabindex="0" class="btn btn-ghost btn-sm btn-circle bg-base-200/50 hover:bg-primary hover:text-white transition-all">
+                  <.icon name="hero-ellipsis-vertical" class="w-5 h-5" />
+                </label>
+                 <ul tabindex="0" class="dropdown-content z-[2] menu p-2 shadow-xl bg-base-100 rounded-lg w-48 border border-base-200 text-[10px] font-black uppercase tracking-widest overflow-hidden">
+                  <li class="menu-title opacity-40 px-4 py-3 border-b border-base-200 mb-1">Actions</li>
+                  <li>
+                    <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}"} class="py-3 hover:bg-primary/5">
+                      <.icon name="hero-eye" class="w-4 h-4 text-primary" /> Open
+                    </.link>
+                  </li>
+                  <li>
+                    <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}"} class="py-3 hover:bg-primary/5">
+                      <.icon name="hero-pencil" class="w-4 h-4 text-primary" /> View
+                    </.link>
+                  </li>
+                   <li>
+                    <button phx-click="delete" phx-value-id={app.id} data-confirm="Are you sure?" class="py-3 text-error hover:bg-error/5">
+                      <.icon name="hero-trash" class="w-4 h-4" /> Delete
+                    </button>
+                  </li>
+                </ul>
               </div>
+            </div>
+
+            <div class="space-y-3 mb-8 relative">
+              <h3 class="text-2xl font-black tracking-tight text-base-content group-hover:text-primary transition-colors line-clamp-1">
+                {app.name}
+              </h3>
+              <p class="text-sm text-base-content/40 line-clamp-2 h-10 leading-relaxed font-bold tracking-tight italic">
+                {app.description || "Experimental project roadmap without abstract description."}
+              </p>
+            </div>
+
+            <div class="flex items-center gap-3 pt-8 border-t border-base-200 relative">
+              <div class="flex flex-col">
+                 <span class="text-[9px] font-black text-base-content/20 uppercase tracking-widest mb-1">Category</span>
+                 <span class="text-[10px] font-black uppercase text-primary tracking-widest">
+                   {app.category}
+                 </span>
+              </div>
+              <div class="ml-auto text-right">
+                 <span class="text-[9px] font-black text-base-content/20 uppercase tracking-widest mb-1 block">Status</span>
+                 <span class="text-[10px] font-black uppercase px-2 py-0.5 border border-base-200 text-base-content/40 rounded-lg tracking-widest">
+                   {app.status}
+                 </span>
+              </div>
+            </div>
+
+            <!-- Footer Meta -->
+            <div class="mt-8 flex items-center justify-between relative bg-base-50/50 -mx-8 -mb-8 p-6 border-t border-base-200">
+                <div class="flex items-center gap-3">
+                   <div class="w-8 h-8 rounded-lg bg-base-100 border border-base-200 flex items-center justify-center text-[10px] font-black text-base-content shadow-sm" title={app.user.email}>
+                     {String.at(app.user.email, 0) |> String.upcase()}
+                   </div>
+                   <div class="flex flex-col">
+                      <span class="text-[9px] font-black text-base-content opacity-40 uppercase">Owner</span>
+                      <span class="text-[10px] font-bold text-base-content truncate w-24 lowercase italic opacity-60">@{String.split(app.user.email, "@") |> List.first()}</span>
+                   </div>
+                </div>
+
+               <div class="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+                  Enter <.icon name="hero-chevron-right" class="w-3.5 h-3.5" />
+               </div>
+            </div>
           </div>
         <% end %>
       </div>
 
-      <div class={[@active_tab != :public_apps && "hidden"]} id="public-apps-list">
-        <%= if filter_apps_by_search(@public_apps_list, @app_search) == [] do %>
-          <.empty_state
-            title={if @app_search == "", do: "No public assets", else: "No matches found"}
-            description={if @app_search == "", do: "Publicly shared frameworks and architectures will appear here for you to explore and clone.", else: "Try adjusting your search or filters to find what you're looking for."}
-            icon="hero-globe-alt"
-          >
-            <:action :if={@app_search != ""}>
-              <button phx-click={JS.set_attribute({"value", ""}, to: "input[name='app_search']") |> JS.push("search-apps", value: %{"value" => ""})} class="btn btn-ghost">
-                Clear Search
-              </button>
-            </:action>
-          </.empty_state>
-        <% else %>
-          <div :for={app <- filter_apps_by_search(@public_apps_list, @app_search)} id={"public_apps-#{app.id}"} class="group border-b border-base-200 hover:bg-base-100 transition-all py-4 flex items-center justify-between gap-4">
-              <div class="flex items-center gap-4 cursor-pointer flex-1" phx-click={JS.navigate(~p"/apps/#{app}")}>
-                 <div class="text-gray-300 group-hover:text-primary transition-colors">
-                    <.icon name={if app.icon, do: "hero-#{app.icon}", else: "hero-cube"} class="w-5 h-5" />
-                 </div>
-                 <div class="flex flex-col">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-sm font-bold tracking-tight">{app.name}</span>
-                      <span class={["text-[9px] uppercase font-black px-1.5 py-0.5 rounded", (app.visibility || "private") == "public" && "bg-primary/20 text-primary", (app.visibility || "private") == "private" && "bg-base-300 text-base-content/60"]}>
-                        {app.visibility || "private"}
-                      </span>
-                    </div>
-                    <div class="flex gap-2 items-center flex-wrap text-[9px] text-gray-400">
-                      <span class="font-black uppercase tracking-widest">by {app.user.email}</span>
-                      <span>•</span>
-                      <span class="font-bold">{length(app.features)} features</span>
-                      <%= if app.pr_link do %>
-                        <a href={app.pr_link} target="_blank" class="text-gray-400 hover:text-primary font-black ml-1" phx-click-stop>GIT</a>
-                      <% end %>
-                    </div>
-                 </div>
-              </div>
-
-              <div class="flex items-center gap-3" phx-click-stop>
-                <%!-- Like button: standalone, NOT inside dropdown so click always fires --%>
-                <button type="button" phx-click="toggle-like" phx-value-id={app.id} class={["btn btn-ghost btn-xs shrink-0", if(Planner.liked_by?(app, @current_user), do: "text-error", else: "text-gray-300")]} title="Like">
-                  <.icon name={if Planner.liked_by?(app, @current_user), do: "hero-heart-solid", else: "hero-heart"} class="w-4 h-4" />
-                  <span class="text-[10px]"><%= length(app.likes || []) %></span>
-                </button>
-
-                <div class="dropdown dropdown-hover dropdown-end">
-                  <label tabindex="0" class="btn btn-ghost btn-xs text-base-content/70 cursor-pointer">
-                    <.icon name="hero-user-group" class="w-4 h-4" />
-                    <span class="text-[10px]"><%= length(app.app_members || []) + 1 %></span>
-                  </label>
-                  <div tabindex="0" class="dropdown-content z-[100] p-3 shadow bg-base-100 rounded-lg border w-52 max-h-[200px] overflow-y-auto">
-                    <p class="text-[10px] font-black uppercase text-gray-400 mb-2">Access</p>
-                    <ul class="text-xs space-y-1.5">
-                      <li class="truncate flex justify-between gap-2">
-                        <span>{if app.user, do: app.user.email, else: "—"}</span>
-                        <span class="text-[9px] uppercase text-primary shrink-0">Owner</span>
-                      </li>
-                      <%= for m <- app.app_members || [] do %>
-                        <li class="truncate flex justify-between gap-2">
-                          <span>{if Ecto.assoc_loaded?(m.user) && m.user, do: m.user.email, else: "—"}</span>
-                          <span class="text-[9px] uppercase text-base-content/60 shrink-0">{m.role}</span>
-                        </li>
-                      <% end %>
-                    </ul>
-                  </div>
-                </div>
-
-                <%= if app.user_id == @current_user.id do %>
-                  <span class="text-[8px] font-black uppercase text-gray-400">Owner</span>
-                <% else %>
-                  <button phx-click="fork" phx-value-id={app.id} class="btn btn-xs btn-outline btn-primary rounded">Clone</button>
-                <% end %>
-              </div>
+      <%= if Enum.empty?(@filtered_apps) do %>
+        <div class="py-32 text-center border-2 border-dashed border-base-200 rounded-2xl bg-base-50/50">
+          <div class="w-20 h-20 bg-white rounded-xl shadow-lg flex items-center justify-center mx-auto mb-8 border border-base-200 group hover:rotate-12 transition-transform duration-500">
+            <.icon name="hero-command-line" class="w-10 h-10 text-primary" />
           </div>
-        <% end %>
-      </div>
-
-    </Layouts.app>
+          <h3 class="text-3xl font-black text-base-content tracking-tighter">No Projects Yet</h3>
+          <p class="text-base-content/30 font-bold max-w-sm mx-auto mt-4 text-[10px] uppercase tracking-widest">
+            Create your first project or load a sample.
+          </p>
+          <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <.link
+              navigate={~p"/workspaces/#{@current_workspace.id}/apps/new"}
+              class="btn btn-primary btn-md rounded-lg px-8 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20"
+            >
+              New Project
+            </.link>
+            <button
+              phx-click="add_example"
+              class="btn btn-outline btn-md rounded-lg px-8 font-black text-[10px] uppercase tracking-widest border-base-300"
+            >
+              Load Example
+            </button>
+          </div>
+        </div>
+      <% end %>
+    </div>
     """
   end
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: Phoenix.PubSub.subscribe(AppPlanner.PubSub, "app_updates")
     user = socket.assigns.current_scope.user
+    workspace = socket.assigns.current_workspace
 
-    apps = Planner.list_apps(user)
+    if is_nil(workspace) do
+      {:ok,
+       socket
+       |> put_flash(:error, "Select a workspace first.")
+       |> push_navigate(to: ~p"/workspaces")}
+    else
+      apps = Planner.list_apps(user, workspace.id)
 
-    # My Library: apps I own OR apps shared with me (I'm a member), no parent
-    my_apps =
-      Enum.filter(apps, fn app ->
-        is_nil(app.parent_app_id) and
-          (app.user_id == user.id or
-             Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end))
-      end)
-
-    # Public Library: public apps
-    public_apps =
-      Enum.filter(
-        apps,
-        &(String.downcase(&1.visibility || "") == "public" && is_nil(&1.parent_app_id))
-      )
-
-    {:ok,
-     socket
-     |> assign(:page_title, "Listing Apps")
-     |> assign(:current_user, user)
-     |> assign(:app_search, "")
-     |> assign(:my_apps_list, my_apps)
-     |> assign(:public_apps_list, public_apps)
-     |> assign(:my_apps_count, length(my_apps))
-     |> assign(:public_apps_count, length(public_apps))}
+      {:ok,
+       socket
+       |> assign(:apps, apps)
+       |> assign(:filtered_apps, apps)
+       |> assign(:search_query, "")}
+    end
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    tab =
-      case params["tab"] do
-        "public_apps" -> :public_apps
-        _ -> :my_apps
-      end
-
-    user = socket.assigns.current_scope.user
-    apps = Planner.list_apps(user)
-
-    my_apps =
-      Enum.filter(apps, fn app ->
-        is_nil(app.parent_app_id) and
-          (app.user_id == user.id or
-             Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end))
-      end)
-
-    public_apps =
-      Enum.filter(
-        apps,
-        &(String.downcase(&1.visibility || "") == "public" && is_nil(&1.parent_app_id))
-      )
-
-    socket =
-      socket
-      |> assign(:active_tab, tab)
-      |> assign(:my_apps_list, my_apps)
-      |> assign(:public_apps_list, public_apps)
-      |> assign(:my_apps_count, length(my_apps))
-      |> assign(:public_apps_count, length(public_apps))
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event("search-apps", %{"value" => value}, socket) do
-    {:noreply, assign(socket, :app_search, value || "")}
-  end
-
-  @impl true
-  def handle_event("stop_propagation", _, socket), do: {:noreply, socket}
-
-  @impl true
-  def handle_event("change-tab", %{"tab" => tab}, socket) do
-    {:noreply, push_patch(socket, to: ~p"/apps?tab=#{tab}")}
-  end
-
-  @impl true
-  def handle_event("toggle-like", %{"id" => id}, socket) when is_binary(id) or is_integer(id) do
-    user = socket.assigns.current_user || socket.assigns.current_scope.user
-    app_id = if is_binary(id), do: String.to_integer(id), else: id
-    app = Planner.get_app(app_id, user)
-
-    if app == nil do
-      socket = remove_app_from_lists(socket, app_id)
-
+    if params["new_app"] == "true" do
       {:noreply,
        socket
-       |> put_flash(:error, "This project is no longer available.")}
+       |> push_navigate(to: ~p"/workspaces/#{socket.assigns.current_workspace.id}/apps/new")}
     else
-      if Planner.liked_by?(app, user) do
-        Planner.unlike_app(app.id, user.id)
-      else
-        Planner.like_app(app.id, user.id)
-      end
-
-      updated_app = Planner.get_app(app_id, user)
-
-      if updated_app == nil do
-        socket = remove_app_from_lists(socket, app_id)
-
-        {:noreply,
-         socket
-         |> put_flash(:error, "This project is no longer available.")}
-      else
-        in_my_library =
-          updated_app.user_id == user.id or
-            Enum.any?(updated_app.app_members || [], fn m -> m.user_id == user.id end)
-
-        socket =
-          if in_my_library do
-            my_apps =
-              Enum.map(socket.assigns.my_apps_list, fn a ->
-                if a.id == updated_app.id, do: updated_app, else: a
-              end)
-
-            assign(socket, :my_apps_list, my_apps)
-          else
-            public_apps =
-              Enum.map(socket.assigns.public_apps_list, fn a ->
-                if a.id == updated_app.id, do: updated_app, else: a
-              end)
-
-            assign(socket, :public_apps_list, public_apps)
-          end
-
-        {:noreply, socket}
-      end
-    end
-  end
-
-  def handle_event("toggle-like", _params, socket), do: {:noreply, socket}
-
-  @impl true
-  def handle_event("delete", %{"id" => id}, socket) do
-    user = socket.assigns.current_scope.user
-    app_id = if is_binary(id), do: String.to_integer(id), else: id
-    app = Planner.get_app(app_id, user)
-
-    if app == nil do
-      socket = remove_app_from_lists(socket, app_id)
-
-      {:noreply,
-       socket
-       |> put_flash(:error, "This project is no longer available.")}
-    else
-      unless app.user_id == user.id, do: raise("Only the owner can delete this project")
-      {:ok, _} = Planner.delete_app(app)
-      my_apps = Enum.reject(socket.assigns.my_apps_list, fn a -> a.id == app.id end)
-
-      {:noreply,
-       assign(socket, :my_apps_list, my_apps) |> assign(:my_apps_count, length(my_apps))}
-    end
-  end
-
-  @impl true
-  def handle_event("fork", %{"id" => id}, socket) do
-    user = socket.assigns.current_scope.user
-    app_id = if is_binary(id), do: String.to_integer(id), else: id
-    original_app = Planner.get_app(app_id, user)
-
-    if original_app == nil do
-      socket = remove_app_from_lists(socket, app_id)
-
-      {:noreply,
-       socket
-       |> put_flash(:error, "This project is no longer available.")}
-    else
-      cond do
-        original_app.user_id == user.id ->
-          {:noreply, put_flash(socket, :error, "You already own this project.")}
-
-        String.downcase(original_app.visibility || "") != "public" ->
-          {:noreply, put_flash(socket, :error, "Only public projects can be cloned.")}
-
-        true ->
-          case Planner.duplicate_app(original_app, user) do
-            {:ok, new_app} ->
-              my_apps = [new_app | socket.assigns.my_apps_list]
-
-              {:noreply,
-               socket
-               |> put_flash(:info, "App cloned successfully!")
-               |> assign(:my_apps_list, my_apps)
-               |> assign(:my_apps_count, length(my_apps))
-               |> push_patch(to: ~p"/apps?tab=my_apps")}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, "Failed to clone app.")}
-          end
-      end
-    end
-  end
-
-  @impl true
-  def handle_info({:app_updated, id}, socket) do
-    user = socket.assigns.current_user || socket.assigns.current_scope.user
-    app = Planner.get_app(id, user)
-
-    if app == nil do
-      socket = remove_app_from_lists(socket, id)
-
-      {:noreply,
-       socket
-       |> put_flash(:error, "This project is no longer available.")}
-    else
-      in_my_library =
-        app.user_id == user.id or
-          Enum.any?(app.app_members || [], fn m -> m.user_id == user.id end)
-
-      socket =
-        if in_my_library do
-          my_apps =
-            Enum.map(socket.assigns.my_apps_list, fn a -> if a.id == app.id, do: app, else: a end)
-
-          assign(socket, :my_apps_list, my_apps)
-        else
-          if String.downcase(app.visibility || "") == "public" do
-            public_apps =
-              Enum.map(socket.assigns.public_apps_list, fn a ->
-                if a.id == app.id, do: app, else: a
-              end)
-
-            assign(socket, :public_apps_list, public_apps)
-          else
-            public_apps = Enum.reject(socket.assigns.public_apps_list, fn a -> a.id == app.id end)
-
-            assign(socket, :public_apps_list, public_apps)
-            |> assign(:public_apps_count, length(public_apps))
-          end
-        end
-
       {:noreply, socket}
     end
   end
 
-  defp remove_app_from_lists(socket, app_id) do
-    my_apps = Enum.reject(socket.assigns.my_apps_list, fn a -> a.id == app_id end)
-    public_apps = Enum.reject(socket.assigns.public_apps_list, fn a -> a.id == app_id end)
-
-    socket
-    |> assign(:my_apps_list, my_apps)
-    |> assign(:my_apps_count, length(my_apps))
-    |> assign(:public_apps_list, public_apps)
-    |> assign(:public_apps_count, length(public_apps))
+  @impl true
+  def handle_event("search", %{"value" => search}, socket) do
+    query = String.downcase(String.trim(search))
+    filtered = filter_apps(socket.assigns.apps, query)
+    {:noreply, assign(socket, search_query: search, filtered_apps: filtered)}
   end
 
-  def filter_apps_by_search(apps, search) when is_binary(search) do
-    q = String.downcase(String.trim(search))
+  @impl true
+  def handle_event("delete", %{"id" => id}, socket) do
+    user = socket.assigns.current_scope.user
+    workspace = socket.assigns.current_workspace
+    app = Planner.get_app!(id, user, workspace.id)
 
-    if q == "" do
-      apps
-    else
-      Enum.filter(apps, fn app ->
-        name = String.downcase(app.name || "")
-        category = String.downcase(app.category || "")
-        status = String.downcase(app.status || "")
-        String.contains?(name, q) or String.contains?(category, q) or String.contains?(status, q)
-      end)
+    case Planner.delete_app(app) do
+      {:ok, _} ->
+        apps = Planner.list_apps(user, workspace.id)
+
+        {:noreply,
+         socket
+         |> put_flash(:info, "Project deleted")
+         |> assign(apps: apps, filtered_apps: filter_apps(apps, socket.assigns.search_query))}
+
+      {:error, _} ->
+        {:noreply, socket |> put_flash(:error, "Could not delete project")}
     end
   end
 
-  def filter_apps_by_search(apps, _), do: apps
+  @impl true
+  def handle_event("add_example", _, socket) do
+    user = socket.assigns.current_scope.user
+    workspace = socket.assigns.current_workspace
 
-  defp empty_state(assigns) do
-    ~H"""
-    <div class="flex flex-col items-center justify-center py-20 px-4 text-center bg-base-100/30 border-2 border-dashed border-base-200 rounded-3xl mt-4">
-      <div class="w-20 h-20 bg-base-100 rounded-full flex items-center justify-center mb-6 shadow-sm ring-1 ring-base-200">
-        <.icon name={@icon} class="w-10 h-10 text-base-content/20" />
-      </div>
-      <h3 class="text-xl font-black tracking-tight mb-2">{@title}</h3>
-      <p class="text-sm text-gray-400 max-w-sm mb-8 leading-relaxed">{@description}</p>
-      <div class="flex flex-wrap items-center justify-center gap-4">
-        {render_slot(@action)}
-      </div>
-    </div>
-    """
+    case Planner.create_example_app(user, workspace.id) do
+      {:ok, app} ->
+        # Find the first feature to navigate to Kanban
+        feature = List.first(Planner.list_features(app.id))
+
+        {:noreply,
+         socket
+         |> put_flash(:info, "Example project deployed successfully")
+         |> push_navigate(
+           to: ~p"/workspaces/#{workspace.id}/apps/#{app.id}/features/#{feature.id}/tasks"
+         )}
+
+      _ ->
+        {:noreply, socket |> put_flash(:error, "Could not deploy example")}
+    end
+  end
+
+  defp filter_apps(apps, ""), do: apps
+
+  defp filter_apps(apps, query) do
+    Enum.filter(apps, fn app ->
+      String.contains?(String.downcase(app.name || ""), query) or
+        String.contains?(String.downcase(app.category || ""), query) or
+        String.contains?(String.downcase(app.status || ""), query)
+    end)
   end
 end

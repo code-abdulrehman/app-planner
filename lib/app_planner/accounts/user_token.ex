@@ -3,6 +3,7 @@ defmodule AppPlanner.Accounts.UserToken do
   import Ecto.Query
   alias AppPlanner.Accounts.UserToken
 
+
   @hash_algorithm :sha256
   @rand_size 32
 
@@ -18,6 +19,8 @@ defmodule AppPlanner.Accounts.UserToken do
     field :sent_to, :string
     field :authenticated_at, :utc_datetime
     belongs_to :user, AppPlanner.Accounts.User
+    belongs_to :workspace, AppPlanner.Planner.Workspace, foreign_key: :workspace_id
+    field :invited_email, :string
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
@@ -152,5 +155,45 @@ defmodule AppPlanner.Accounts.UserToken do
 
   defp by_token_and_context_query(token, context) do
     from UserToken, where: [token: ^token, context: ^context]
+  end
+
+  @doc """
+  Builds a token for inviting a user to a workspace.
+  """
+  def build_workspace_invite_token(%AppPlanner.Accounts.User{} = user, %AppPlanner.Planner.Workspace{} = workspace, invited_email) do
+    token = :crypto.strong_rand_bytes(@rand_size)
+    hashed_token = :crypto.hash(@hash_algorithm, token)
+
+    {Base.url_encode64(token, padding: false),
+     %UserToken{
+       token: hashed_token,
+       context: "workspace_invite",
+       sent_to: invited_email, # This will be the email of the person being invited
+       user_id: user.id, # The user who sent the invite
+       workspace_id: workspace.id,
+       invited_email: invited_email
+     }}
+  end
+
+  @doc """
+  Checks if the token is valid and returns its underlying lookup query for workspace invitations.
+  """
+  def verify_workspace_invite_token_query(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_and_context_query(hashed_token, "workspace_invite"),
+            left_join: user in assoc(token, :user), # The inviter
+            left_join: workspace in assoc(token, :workspace),
+            where: token.inserted_at > ago(^@magic_link_validity_in_minutes, "minute"), # Using magic link validity
+            select: %{token | user: user, workspace: workspace}
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
   end
 end
