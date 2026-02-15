@@ -7,7 +7,7 @@ defmodule AppPlanner.Planner.App do
     field(:icon, :string)
     field(:description, :string)
     field(:status, :string, default: "Idea")
-    field(:category, :string)
+    field(:status_config, :map)
 
     belongs_to(:user, AppPlanner.Accounts.User)
     belongs_to(:last_updated_by, AppPlanner.Accounts.User)
@@ -27,10 +27,10 @@ defmodule AppPlanner.Planner.App do
       :user_id,
       :last_updated_by_id,
       :status,
-      :category,
-      :workspace_id
+      :workspace_id,
+      :status_config
     ])
-    |> validate_required([:name, :description, :status, :category, :workspace_id])
+    |> validate_required([:name, :description, :status, :workspace_id])
     |> validate_inclusion(:status, ~w(Idea Planned In Progress Completed Archived))
   end
 end

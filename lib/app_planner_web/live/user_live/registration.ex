@@ -8,36 +8,84 @@ defmodule AppPlannerWeb.UserLive.Registration do
   def render(assigns) do
     ~H"""
     <div class="max-w-md mx-auto py-24 px-6 text-center">
-       <div class="mb-12">
-          <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">A</div>
-          <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Create Account</h1>
-          <p class="text-sm text-base-content/40 font-medium italic">
-            Already have an account? <.link navigate={~p"/users/log-in"} class="text-primary hover:underline font-bold">Log in</.link>
-          </p>
-       </div>
+      <div class="mb-12">
+        <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">
+          A
+        </div>
+        <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Create Account</h1>
+        <p class="text-sm text-base-content/40 font-medium italic">
+          Already have an account?
+          <.link navigate={~p"/users/log-in"} class="text-primary hover:underline font-bold">
+            Log in
+          </.link>
+        </p>
+      </div>
 
-       <div class="bg-base-50/50 border border-base-200 rounded-lg p-8">
-          <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate" class="space-y-6">
-            <div class="form-control text-left">
-               <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">Full Name</span></label>
-               <.input field={@form[:full_name]} type="text" placeholder="John Doe" autocomplete="name" phx-mounted={JS.focus()} class="input input-bordered w-full rounded-lg bg-base-100 font-bold" />
-            </div>
+      <div class="bg-base-50/50 border border-base-200 rounded-lg p-8">
+        <.form
+          for={@form}
+          id="registration_form"
+          phx-submit="save"
+          phx-change="validate"
+          class="space-y-6"
+        >
+          <div class="form-control text-left">
+            <label class="label">
+              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Full Name
+              </span>
+            </label>
+            <.input
+              field={@form[:full_name]}
+              type="text"
+              placeholder="John Doe"
+              autocomplete="name"
+              phx-mounted={JS.focus()}
+              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+            />
+          </div>
 
-            <div class="form-control text-left">
-               <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">Email Address</span></label>
-               <.input field={@form[:email]} type="email" placeholder="name@example.com" autocomplete="username" required class="input input-bordered w-full rounded-lg bg-base-100 font-bold" />
-            </div>
+          <div class="form-control text-left">
+            <label class="label">
+              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Email Address
+              </span>
+            </label>
+            <.input
+              field={@form[:email]}
+              type="email"
+              placeholder="name@example.com"
+              autocomplete="username"
+              required
+              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+            />
+          </div>
 
-            <div class="form-control text-left">
-               <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">Password</span></label>
-               <.input field={@form[:password]} type="password" placeholder="••••••••" autocomplete="new-password" required class="input input-bordered w-full rounded-lg bg-base-100 font-bold" />
-            </div>
+          <div class="form-control text-left">
+            <label class="label">
+              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Password
+              </span>
+            </label>
+            <.input
+              field={@form[:password]}
+              type="password"
+              placeholder="••••••••"
+              autocomplete="new-password"
+              required
+              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+            />
+          </div>
 
-            <button type="submit" phx-disable-with="Creating account..." class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
-              Create Account
-            </button>
-          </.form>
-       </div>
+          <button
+            type="submit"
+            phx-disable-with="Creating account..."
+            class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+          >
+            Create Account
+          </button>
+        </.form>
+      </div>
     </div>
     """
   end
@@ -85,6 +133,34 @@ defmodule AppPlannerWeb.UserLive.Registration do
   end
 
   @impl true
+  def handle_event("send_magic_link", _params, socket) do
+    email = socket.assigns.form[:email].value
+
+    if email && email != "" do
+      case AppPlanner.Accounts.register_or_login_with_magic_link(
+             email,
+             &url(~p"/users/log-in/#{&1}")
+           ) do
+        {:ok, _user} ->
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             "Check your email for a secure link to complete your registration."
+           )
+           |> push_navigate(to: ~p"/users/log-in")}
+
+        {:error, _changeset} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Something went wrong. Please check your email and try again.")}
+      end
+    else
+      {:noreply, socket |> put_flash(:error, "Please enter your email address first.")}
+    end
+  end
+
+  @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
     case Accounts.register_user(user_params) do
       {:ok, user} ->
@@ -97,7 +173,7 @@ defmodule AppPlannerWeb.UserLive.Registration do
               {:noreply,
                socket
                |> put_flash(:info, "Account created and workspace joined successfully!")
-               |> push_navigate(to: ~p"/workspaces/#{workspace.id}")}
+               |> push_navigate(to: ~p"/workspaces/#{workspace.id}/board")}
 
             {:error, reason} ->
               {:noreply,
@@ -123,6 +199,7 @@ defmodule AppPlannerWeb.UserLive.Registration do
     end
   end
 
+  @impl true
   def handle_event("validate", %{"user" => user_params}, socket) do
     previous = socket.assigns[:last_registration_params] || %{}
     merged = Map.merge(previous, user_params)

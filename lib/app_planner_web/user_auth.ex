@@ -292,7 +292,10 @@ defmodule AppPlannerWeb.UserAuth do
         Scope.for_user(user)
       end)
 
-    user = socket.assigns.current_scope.user
+    # Safely get user from current_scope
+    user =
+      if socket.assigns.current_scope, do: Map.get(socket.assigns.current_scope, :user), else: nil
+
     socket = Phoenix.Component.assign(socket, :is_super_admin, Accounts.super_admin?(user))
 
     # Fetch user's workspaces
@@ -312,12 +315,8 @@ defmodule AppPlannerWeb.UserAuth do
   end
 
   @doc "Returns the path to redirect to after log in."
-  def signed_in_path(conn) do
-    if workspace = conn.assigns[:current_workspace] do
-      ~p"/workspaces/#{workspace.id}/apps?new_app=true"
-    else
-      ~p"/workspaces"
-    end
+  def signed_in_path(_conn) do
+    ~p"/board"
   end
 
   @doc """

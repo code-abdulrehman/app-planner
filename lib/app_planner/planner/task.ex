@@ -3,7 +3,7 @@ defmodule AppPlanner.Planner.Task do
   import Ecto.Changeset
 
   alias AppPlanner.Accounts.User
-  alias AppPlanner.Planner.{Feature, Task, TaskComment, TaskCustomFieldValue, WorkspaceCategory}
+  alias AppPlanner.Planner.{Feature, Task, TaskComment}
 
   schema "tasks" do
     field(:title, :string)
@@ -28,12 +28,6 @@ defmodule AppPlanner.Planner.Task do
 
     has_many(:subtasks, Task, foreign_key: :parent_task_id)
     has_many(:comments, TaskComment, on_delete: :delete_all)
-    has_many(:custom_field_values, TaskCustomFieldValue, on_delete: :delete_all)
-
-    many_to_many(:workspace_categories, WorkspaceCategory,
-      join_through: AppPlanner.Planner.TaskWorkspaceCategory,
-      on_delete: :delete_all
-    )
 
     timestamps()
   end

@@ -6,26 +6,9 @@ defmodule AppPlanner.Planner do
   import Ecto.Query, warn: false
   alias AppPlanner.Repo
 
-  alias AppPlanner.Planner.{App, Feature, Task, TaskHistory, Category, TaskComment}
+  alias AppPlanner.Planner.{App, Feature, Task, TaskHistory, TaskComment}
   alias AppPlanner.Workspaces
   alias AppPlanner.Accounts
-
-  # ============================================================================
-  # Category Context
-  # ============================================================================
-
-  def list_categories do
-    Category |> order_by([c], asc: c.name) |> Repo.all()
-  end
-
-  def ensure_category_by_name(name) when is_binary(name) do
-    name = String.trim(name)
-    if name == "", do: nil, else: Repo.get_by(Category, name: name) || create_category!(name)
-  end
-
-  defp create_category!(name) do
-    %Category{} |> Category.changeset(%{name: name}) |> Repo.insert!()
-  end
 
   # ============================================================================
   # App Context
@@ -81,8 +64,8 @@ defmodule AppPlanner.Planner do
 
   def get_app!(id, user, workspace_id) when is_integer(id) do
     case get_app(user, id, workspace_id) do
-      nil -> raise Ecto.NoResultsError, queryable: App
-      app -> app
+      app when is_struct(app, App) -> app
+      _ -> raise Ecto.NoResultsError, queryable: App
     end
   end
 
@@ -215,13 +198,30 @@ defmodule AppPlanner.Planner do
   # Task Context
   # ============================================================================
 
-  @default_task_statuses ["Todo", "In Progress", "Done", "Blocked", "Archived"]
-  def task_statuses(workspace \\ nil) do
-    if workspace && workspace.status_config && workspace.status_config["statuses"] do
-      workspace.status_config["statuses"]
-    else
-      @default_task_statuses
+  @default_task_statuses ["Todo", "In Progress", "Done"]
+  @default_status_colors %{
+    "Todo" => "#3b82f6",
+    "In Progress" => "#f59e0b",
+    "Done" => "#10b981"
+  }
+
+  def task_statuses(app \\ nil, workspace \\ nil) do
+    cond do
+      app && app.status_config && app.status_config["statuses"] ->
+        app.status_config["statuses"]
+
+      workspace && workspace.status_config && workspace.status_config["statuses"] ->
+        workspace.status_config["statuses"]
+
+      true ->
+        @default_task_statuses
     end
+  end
+
+  def status_color(status, app \\ nil, workspace \\ nil) do
+    config = (app && app.status_config) || (workspace && workspace.status_config) || %{}
+    colors = config["colors"] || %{}
+    colors[status] || @default_status_colors[status] || "#94a3b8"
   end
 
   def list_tasks_by_feature(feature_id) do
@@ -268,6 +268,41 @@ defmodule AppPlanner.Planner do
         {:error, changeset} ->
           Repo.rollback(changeset)
       end
+    end)
+  end
+
+  def reposition_task(%Task{} = task, new_status, new_index) do
+    # Ensure indices are 0-based integers
+    new_index = if is_binary(new_index), do: String.to_integer(new_index), else: new_index
+
+    # Let's use a simpler implementation:
+    Repo.transaction(fn ->
+      # 1. Move task to new status if needed
+      task =
+        if task.status != new_status do
+          task |> Task.changeset(%{status: new_status}) |> Repo.update!()
+        else
+          task
+        end
+
+      # 2. Fetch all tasks in that status (including the moved one)
+      tasks_in_status =
+        Task
+        |> where([t], t.feature_id == ^task.feature_id and t.status == ^new_status)
+        |> order_by([t], asc: t.position, asc: t.inserted_at)
+        |> Repo.all()
+
+      # 3. Remove task from list and re-insert at new_index
+      other_tasks = Enum.reject(tasks_in_status, &(&1.id == task.id))
+      ordered_tasks = List.insert_at(other_tasks, new_index, task)
+
+      # 4. Update positions
+      Enum.with_index(ordered_tasks)
+      |> Enum.each(fn {t, idx} ->
+        if t.position != idx do
+          t |> Task.changeset(%{position: idx}) |> Repo.update!()
+        end
+      end)
     end)
   end
 

@@ -23,11 +23,13 @@ defmodule AppPlanner.Accounts.Scope do
   @doc """
   Creates a scope for the given user.
 
-  Returns nil if no user is given.
+  Returns a scope with a nil user if no user is given.
   """
+  def for_user(user \\ nil)
+
   def for_user(%User{} = user) do
     %__MODULE__{user: user}
   end
 
-  def for_user(nil), do: nil
+  def for_user(nil), do: %__MODULE__{user: nil}
 end

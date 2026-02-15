@@ -44,15 +44,25 @@ defmodule AppPlanner.Accounts.User do
   def registration_changeset(user, attrs, opts \\ []) do
     user
     |> cast(attrs, [:email, :full_name, :password])
-    |> validate_required([:email, :password])
+    |> validate_required([:email])
     |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
       message: "must have the @ sign and no spaces"
     )
     |> validate_length(:email, max: 160)
-    |> validate_length(:password, min: 12, max: 72)
+    |> maybe_validate_password(opts)
     |> unsafe_validate_unique(:email, AppPlanner.Repo)
     |> unique_constraint(:email)
     |> maybe_hash_password(opts)
+  end
+
+  defp maybe_validate_password(changeset, opts) do
+    if Keyword.get(opts, :require_password, true) do
+      changeset
+      |> validate_required([:password])
+      |> validate_length(:password, min: 12, max: 72)
+    else
+      changeset
+    end
   end
 
   defp validate_email(changeset, opts) do

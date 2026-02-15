@@ -14,7 +14,7 @@ defmodule AppPlannerWeb.Layouts do
   attr(:flash, :map, required: true, doc: "the map of flash messages")
   attr(:current_scope, :map, default: nil)
   attr(:current_workspace, :map, default: nil)
-  slot(:inner_block, required: true)
+  attr(:inner_content, :any, required: true)
 
   def app(assigns) do
     ~H"""
@@ -22,7 +22,7 @@ defmodule AppPlannerWeb.Layouts do
       <header class="h-14 border-b border-base-200 bg-base-100/80 backdrop-blur-md shrink-0 flex items-center justify-between px-6 sticky top-0 z-40">
         <div class="flex items-center gap-4">
            <.link navigate={~p"/workspaces"} class="flex items-center gap-2 group">
-              <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-content font-black text-sm shadow-sm group-hover:scale-110 transition-transform">A</div>
+              <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-content font-black text-sm shadow-sm group-hover:-rotate-20 transition-transform">A</div>
               <span class="font-black tracking-tighter text-lg text-base-content">AppPlanner</span>
            </.link>
            <div class="flex items-center gap-3 ml-4 pl-4 border-l border-base-200">
@@ -38,8 +38,8 @@ defmodule AppPlannerWeb.Layouts do
            <.theme_toggle />
 
            <div class="dropdown dropdown-end">
-              <label tabindex="0" class="btn btn-ghost btn-circle btn-sm avatar">
-                 <div class="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center text-base-content/60 font-black text-xs border border-base-300 shadow-inner">
+              <label tabindex="0" class="btn btn-ghost btn-circle btn-sm avatar flex items-center justify-center border bg-base-300 rounded-full">
+                 <div class="w-8 h-5 rounded-lg flex items-center justify-center text-base-content/60 font-black text-xs border border-base-300 shadow-inner">
                    <%= if @current_scope && @current_scope.user do %>
                      {String.at(@current_scope.user.email, 0) |> String.upcase()}
                    <% else %>
@@ -58,7 +58,7 @@ defmodule AppPlannerWeb.Layouts do
       </header>
 
       <main class="flex-1 flex overflow-hidden">
-        {render_slot(@inner_block)}
+        {@inner_content}
       </main>
 
       <.flash_group flash={@flash} />

@@ -26,6 +26,8 @@ import { hooks as colocatedHooks } from "phoenix-colocated/app_planner"
 import topbar from "../vendor/topbar"
 
 import SortableHook from "./hooks/sortable"
+import SortableColumnsHook from "./hooks/sortable_columns"
+import AutoSubmitOnBlur from "./hooks/auto_submit_on_blur"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -33,6 +35,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
   hooks: {
     Sortable: SortableHook,
+    SortableColumns: SortableColumnsHook,
+    AutoSubmitOnBlur: AutoSubmitOnBlur,
     ...colocatedHooks
   },
 })

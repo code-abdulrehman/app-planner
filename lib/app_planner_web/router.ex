@@ -56,18 +56,34 @@ defmodule AppPlannerWeb.Router do
       live("/workspaces", WorkspaceLive.Index, :index)
       live("/workspaces/new", WorkspaceLive.Form, :new)
       live("/workspaces/:id", WorkspaceLive.Show, :show)
+      live("/workspaces/:id/edit", WorkspaceLive.Form, :edit)
+
+      live("/board", TaskLive.Index, :index)
+      live("/workspaces/:workspace_id/board", TaskLive.Index, :index)
 
       scope "/workspaces/:workspace_id", as: :workspace do
         live("/apps", AppLive.Index, :index)
         live("/apps/new", AppLive.Form, :new)
         live("/apps/:id", AppLive.Show, :show)
+        live("/apps/:id/edit", AppLive.Form, :edit)
 
         live("/apps/:app_id/features/new", FeatureLive.Form, :new)
+        live("/apps/:app_id/features/:id", FeatureLive.Show, :show)
+        live("/apps/:app_id/features/:id/edit", FeatureLive.Form, :edit)
 
-        # Tasks nested under features
+        # Tasks nested under features (handled as modals on the board)
         live("/apps/:app_id/features/:feature_id/tasks", TaskLive.Index, :index)
-        live("/apps/:app_id/features/:feature_id/tasks/new", TaskLive.Form, :new)
-        live("/apps/:app_id/features/:feature_id/tasks/:id", TaskLive.Show, :show)
+        live("/apps/:app_id/features/:feature_id/tasks/add_column", TaskLive.Index, :add_column)
+
+        live(
+          "/apps/:app_id/features/:feature_id/tasks/rename_column",
+          TaskLive.Index,
+          :rename_column
+        )
+
+        live("/apps/:app_id/features/:feature_id/tasks/new", TaskLive.Index, :new_task)
+        live("/apps/:app_id/features/:feature_id/tasks/:id", TaskLive.Index, :show_task)
+        live("/apps/:app_id/features/:feature_id/tasks/:id/edit", TaskLive.Index, :edit_task)
       end
     end
 

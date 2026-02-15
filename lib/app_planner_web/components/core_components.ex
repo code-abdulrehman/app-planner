@@ -60,15 +60,15 @@ defmodule AppPlannerWeb.CoreComponents do
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
+        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap break-words",
         @kind == :info && "alert-info",
         @kind == :error && "alert-error"
       ]}>
         <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
         <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
+        <div class="min-w-0">
           <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
+          <p class="whitespace-pre-wrap text-xs">{msg}</p>
         </div>
         <div class="flex-1" />
         <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
@@ -100,13 +100,19 @@ defmodule AppPlannerWeb.CoreComponents do
 
   def breadcrumb(assigns) do
     ~H"""
-    <nav class="mb-4 flex items-center gap-1.5 text-xs font-bold text-gray-400 flex-wrap" aria-label="Breadcrumb">
+    <nav
+      class="mb-4 flex items-center gap-1.5 text-xs font-bold text-gray-400 flex-wrap"
+      aria-label="Breadcrumb"
+    >
       <%= for {item, i} <- Enum.with_index(@items) do %>
         <%= if i > 0 do %>
           <span class="text-gray-300" aria-hidden="true">/</span>
         <% end %>
         <%= if item[:path] do %>
-          <.link navigate={item[:path]} class="hover:text-primary transition-colors flex items-center gap-1">
+          <.link
+            navigate={item[:path]}
+            class="hover:text-primary transition-colors flex items-center gap-1"
+          >
             <%= if i == 0 do %>
               <.icon name="hero-arrow-left" class="w-3 h-3 shrink-0" />
             <% end %>
@@ -151,16 +157,17 @@ defmodule AppPlannerWeb.CoreComponents do
       <%= if Enum.any?(@metadata) do %>
         <div class="flex flex-wrap gap-2 mb-4">
           <%= for {key, value} <- @metadata do %>
-             <div class="bg-primary/5 border border-primary/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tight">
-               <span class="text-primary/50 mr-1">{key}:</span>
-               <span class="text-primary">{value}</span>
-             </div>
+            <div class="bg-primary/5 border border-primary/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tight">
+              <span class="text-primary/50 mr-1">{key}:</span>
+              <span class="text-primary">{value}</span>
+            </div>
           <% end %>
         </div>
       <% end %>
       <div class={[
         "markdown-content text-sm leading-relaxed",
-        !@compact && "prose prose-slate max-w-none prose-p:my-0 prose-headings:mb-2 prose-headings:mt-4 first:prose-p:mt-0 last:prose-p:mb-0",
+        !@compact &&
+          "prose prose-slate max-w-none prose-p:my-0 prose-headings:mb-2 prose-headings:mt-4 first:prose-p:mt-0 last:prose-p:mb-0",
         @compact && "prose-compact"
       ]}>
         {@html}
@@ -562,7 +569,10 @@ defmodule AppPlannerWeb.CoreComponents do
 
   def icon(%{name: "hero-" <> _} = assigns) do
     ~H"""
-    <span class={[@name, @class]} style="display: inline-block; min-width: 1em; min-height: 1em; vertical-align: middle;" />
+    <span
+      class={[@name, @class]}
+      style="display: inline-block; min-width: 1em; min-height: 1em; vertical-align: middle;"
+    />
     """
   end
 
@@ -609,6 +619,7 @@ defmodule AppPlannerWeb.CoreComponents do
   attr(:id, :string, required: true)
   attr(:show, :boolean, default: false)
   attr(:on_cancel, JS, default: %JS{})
+  attr(:box_class, :string, default: "max-w-3xl")
   slot(:inner_block, required: true)
 
   def modal(assigns) do
@@ -620,7 +631,11 @@ defmodule AppPlannerWeb.CoreComponents do
       data-cancel={JS.exec(@on_cancel, "phx-remove")}
       class="relative z-50 hidden"
     >
-      <div id={"#{@id}-bg"} class="bg-base-300/50 fixed inset-0 transition-opacity backdrop-blur-sm" aria-hidden="true" />
+      <div
+        id={"#{@id}-bg"}
+        class="bg-base-300/50 fixed inset-0 transition-opacity backdrop-blur-sm"
+        aria-hidden="true"
+      />
       <div
         class="fixed inset-0 overflow-y-auto"
         aria-labelledby={"#{@id}-title"}
@@ -630,7 +645,7 @@ defmodule AppPlannerWeb.CoreComponents do
         tabindex="-1"
       >
         <div class="flex min-h-full items-center justify-center">
-          <div class="w-full max-w-3xl p-4 sm:p-6 lg:py-8">
+          <div class={["w-full p-4 sm:p-6 lg:py-8", @box_class]}>
             <div
               id={"#{@id}-container"}
               phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}

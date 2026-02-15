@@ -13,8 +13,10 @@ defmodule AppPlannerWeb.AppLive.Index do
             {if @current_workspace, do: @current_workspace.name, else: "Project Library"}
           </h1>
           <div class="flex items-center gap-3">
-             <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-             <p class="text-base-content/50 text-xs font-black uppercase tracking-widest">Manage your projects</p>
+            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+            <p class="text-base-content/50 text-xs font-black uppercase tracking-widest">
+              Manage your projects
+            </p>
           </div>
         </div>
 
@@ -25,17 +27,20 @@ defmodule AppPlannerWeb.AppLive.Index do
           <.icon name="hero-plus" class="w-4 h-4 mr-2" /> New Project
         </.link>
       </div>
-
-      <!-- Search & Filters -->
+      
+    <!-- Search & Filters -->
       <div class="relative group">
         <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-all group-focus-within:pl-6">
-          <.icon name="hero-magnifying-glass" class="w-5 h-5 text-base-content/20 group-focus-within:text-primary" />
+          <.icon
+            name="hero-magnifying-glass"
+            class="w-5 h-5 text-base-content/20 group-focus-within:text-primary"
+          />
         </div>
         <input
           type="text"
           phx-keyup="search"
           phx-debounce="300"
-          placeholder="Search by name, category, or status..."
+          placeholder="Search by name or status..."
           class="input input-bordered w-full pl-14 h-14 rounded-lg bg-base-100 border-base-200 focus:border-primary/50 focus:ring-8 focus:ring-primary/5 transition-all text-sm font-bold shadow-sm"
         />
       </div>
@@ -47,7 +52,8 @@ defmodule AppPlannerWeb.AppLive.Index do
             phx-click={JS.navigate(~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}")}
           >
             <!-- Background Decoration -->
-            <div class="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
+            <div class="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors">
+            </div>
 
             <div class="flex items-start justify-between mb-8 relative">
               <div class="p-4 bg-primary/5 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-inner">
@@ -55,23 +61,42 @@ defmodule AppPlannerWeb.AppLive.Index do
               </div>
 
               <div class="dropdown dropdown-end" phx-click-stop>
-                <label tabindex="0" class="btn btn-ghost btn-sm btn-circle bg-base-200/50 hover:bg-primary hover:text-white transition-all">
+                <label
+                  tabindex="0"
+                  class="btn btn-ghost btn-sm btn-circle bg-base-200/50 hover:bg-primary hover:text-white transition-all"
+                >
                   <.icon name="hero-ellipsis-vertical" class="w-5 h-5" />
                 </label>
-                 <ul tabindex="0" class="dropdown-content z-[2] menu p-2 shadow-xl bg-base-100 rounded-lg w-48 border border-base-200 text-[10px] font-black uppercase tracking-widest overflow-hidden">
-                  <li class="menu-title opacity-40 px-4 py-3 border-b border-base-200 mb-1">Actions</li>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content z-[2] menu p-2 shadow-xl bg-base-100 rounded-lg w-48 border border-base-200 text-[10px] font-black tracking-widest overflow-hidden"
+                >
+                  <li class="menu-title opacity-40 px-4 py-3 border-b border-base-200 mb-1">
+                    Actions
+                  </li>
                   <li>
-                    <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}"} class="py-3 hover:bg-primary/5">
+                    <.link
+                      navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}"}
+                      class="py-3 hover:bg-primary/5"
+                    >
                       <.icon name="hero-eye" class="w-4 h-4 text-primary" /> Open
                     </.link>
                   </li>
                   <li>
-                    <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}"} class="py-3 hover:bg-primary/5">
+                    <.link
+                      navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{app.id}"}
+                      class="py-3 hover:bg-primary/5"
+                    >
                       <.icon name="hero-pencil" class="w-4 h-4 text-primary" /> View
                     </.link>
                   </li>
-                   <li>
-                    <button phx-click="delete" phx-value-id={app.id} data-confirm="Are you sure?" class="py-3 text-error hover:bg-error/5">
+                  <li>
+                    <button
+                      phx-click="delete"
+                      phx-value-id={app.id}
+                      data-confirm="Are you sure?"
+                      class="py-3 text-error hover:bg-error/5"
+                    >
                       <.icon name="hero-trash" class="w-4 h-4" /> Delete
                     </button>
                   </li>
@@ -88,36 +113,40 @@ defmodule AppPlannerWeb.AppLive.Index do
               </p>
             </div>
 
-            <div class="flex items-center gap-3 pt-8 border-t border-base-200 relative">
+            <div class="flex items-center gap-3 pt-6 border-t border-base-200 relative">
               <div class="flex flex-col">
-                 <span class="text-[9px] font-black text-base-content/20 uppercase tracking-widest mb-1">Category</span>
-                 <span class="text-[10px] font-black uppercase text-primary tracking-widest">
-                   {app.category}
-                 </span>
-              </div>
-              <div class="ml-auto text-right">
-                 <span class="text-[9px] font-black text-base-content/20 uppercase tracking-widest mb-1 block">Status</span>
-                 <span class="text-[10px] font-black uppercase px-2 py-0.5 border border-base-200 text-base-content/40 rounded-lg tracking-widest">
-                   {app.status}
-                 </span>
+                <span class="text-[9px] font-black text-base-content/20 uppercase tracking-widest mb-1">
+                  Status
+                </span>
+                <span class="text-[10px] font-black uppercase px-2 py-0.5 border border-base-200 text-base-content/40 rounded-lg tracking-widest">
+                  {app.status}
+                </span>
               </div>
             </div>
-
-            <!-- Footer Meta -->
+            
+    <!-- Footer Meta -->
             <div class="mt-8 flex items-center justify-between relative bg-base-50/50 -mx-8 -mb-8 p-6 border-t border-base-200">
-                <div class="flex items-center gap-3">
-                   <div class="w-8 h-8 rounded-lg bg-base-100 border border-base-200 flex items-center justify-center text-[10px] font-black text-base-content shadow-sm" title={app.user.email}>
-                     {String.at(app.user.email, 0) |> String.upcase()}
-                   </div>
-                   <div class="flex flex-col">
-                      <span class="text-[9px] font-black text-base-content opacity-40 uppercase">Owner</span>
-                      <span class="text-[10px] font-bold text-base-content truncate w-24 lowercase italic opacity-60">@{String.split(app.user.email, "@") |> List.first()}</span>
-                   </div>
+              <div class="flex items-center gap-3">
+                <div
+                  :if={app.user}
+                  class="w-8 h-8 rounded-lg bg-base-100 border border-base-200 flex items-center justify-center text-[10px] font-black text-base-content shadow-sm"
+                  title={app.user.email}
+                >
+                  {String.at(app.user.email, 0) |> String.upcase()}
                 </div>
+                <div class="flex flex-col">
+                  <span class="text-[9px] font-black text-base-content opacity-40 uppercase">
+                    Owner
+                  </span>
+                  <span class="text-[10px] font-bold text-base-content truncate w-24 lowercase italic opacity-60">
+                    @{app.user && String.split(app.user.email, "@") |> List.first()}
+                  </span>
+                </div>
+              </div>
 
-               <div class="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-                  Enter <.icon name="hero-chevron-right" class="w-3.5 h-3.5" />
-               </div>
+              <div class="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+                Enter <.icon name="hero-chevron-right" class="w-3.5 h-3.5" />
+              </div>
             </div>
           </div>
         <% end %>
@@ -238,7 +267,6 @@ defmodule AppPlannerWeb.AppLive.Index do
   defp filter_apps(apps, query) do
     Enum.filter(apps, fn app ->
       String.contains?(String.downcase(app.name || ""), query) or
-        String.contains?(String.downcase(app.category || ""), query) or
         String.contains?(String.downcase(app.status || ""), query)
     end)
   end

@@ -8,7 +8,6 @@ defmodule AppPlannerWeb.UserLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="text-center">
         <.header>
           Account Settings
@@ -84,7 +83,6 @@ defmodule AppPlannerWeb.UserLive.Settings do
       <button type="button" phx-click="send_login_link" class="btn btn-ghost btn-sm mt-2">
         Send me a login link
       </button>
-    </Layouts.app>
     """
   end
 

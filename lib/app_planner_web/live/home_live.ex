@@ -10,7 +10,12 @@ defmodule AppPlannerWeb.HomeLive do
   def render(assigns) do
     ~H"""
     <div class="relative isolate overflow-hidden" id="home-hero">
-      <canvas id="hero-lights" class="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true"></canvas>
+      <canvas
+        id="hero-lights"
+        class="absolute inset-0 w-full h-full pointer-events-none"
+        aria-hidden="true"
+      >
+      </canvas>
       <div class="hero-lights-orb hero-lights-orb-1"></div>
       <div class="hero-lights-orb hero-lights-orb-2"></div>
       <div class="hero-lights-orb hero-lights-orb-3"></div>
@@ -18,7 +23,7 @@ defmodule AppPlannerWeb.HomeLive do
         <div class="mx-auto max-w-2xl text-center">
           <div class="flex justify-center mb-8">
             <div class="w-24 h-24 rounded-3xl bg-base-100/80 backdrop-blur-sm flex items-center justify-center text-primary shadow-xl border ">
-               <.icon name="hero-cursor-arrow-ripple" class="w-12 h-12" />
+              <.icon name="hero-cursor-arrow-ripple" class="w-12 h-12" />
             </div>
           </div>
           <h1 class="text-4xl font-bold tracking-tight sm:text-6xl">App Planner</h1>
@@ -28,10 +33,10 @@ defmodule AppPlannerWeb.HomeLive do
           <div class="mt-10 flex items-center justify-center gap-x-6">
             <%= if @current_scope && @current_scope.user && @current_workspace do %>
               <.link
-                href={~p"/workspaces/#{@current_workspace.id}/apps"}
+                href={~p"/workspaces/#{@current_workspace.id}/board"}
                 class="btn btn-primary btn-lg px-8 py-3 rounded-full text-lg font-bold shadow-lg hover:shadow-primary/50 transition-all"
               >
-                Launch My Apps
+                Launch Board
               </.link>
             <% else %>
               <.link
@@ -58,7 +63,9 @@ defmodule AppPlannerWeb.HomeLive do
               <.icon name="hero-rectangle-stack" class="w-6 h-6" />
             </div>
             <h3 class="font-bold text-xl mb-2">Project Hierarchy</h3>
-            <p class="text-sm text-gray-500">Nesting apps within apps. Organize complex monorepos or microservices with ease.</p>
+            <p class="text-sm text-gray-500">
+              Nesting apps within apps. Organize complex monorepos or microservices with ease.
+            </p>
           </div>
 
           <div class="p-8 border rounded-3xl bg-base-100/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow z-10">
@@ -66,7 +73,9 @@ defmodule AppPlannerWeb.HomeLive do
               <.icon name="hero-check-badge" class="w-6 h-6" />
             </div>
             <h3 class="font-bold text-xl mb-2">Feature Tracking</h3>
-            <p class="text-sm text-gray-500">Track implementation details, pros/cons, and time estimates for every feature.</p>
+            <p class="text-sm text-gray-500">
+              Track implementation details, pros/cons, and time estimates for every feature.
+            </p>
           </div>
 
           <div class="p-8 border rounded-3xl bg-base-100/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow z-10">
@@ -74,7 +83,9 @@ defmodule AppPlannerWeb.HomeLive do
               <.icon name="hero-tag" class="w-6 h-6" />
             </div>
             <h3 class="font-bold text-xl mb-2">Custom Labels</h3>
-            <p class="text-sm text-gray-500">Categorize your projects and features with fully customizable, color-coded labels.</p>
+            <p class="text-sm text-gray-500">
+              Categorize your projects and features with fully customizable, color-coded labels.
+            </p>
           </div>
         </div>
       </div>
@@ -142,15 +153,29 @@ defmodule AppPlannerWeb.HomeLive do
       <footer class="border-t border-base-200 mt-16 py-8">
         <div class="mx-auto max-w-7xl px-6 lg:px-8">
           <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-base-content/60">
-            <span>© <%= DateTime.utc_now().year %> App Planner. All rights reserved.</span>
+            <span>© {DateTime.utc_now().year} App Planner. All rights reserved.</span>
             <div class="flex gap-6">
               <.link href={~p"/"} class="hover:text-base-content transition-colors">Home</.link>
               <%= if @current_scope && @current_scope.user && @current_workspace do %>
-                <.link href={~p"/workspaces/#{@current_workspace.id}/apps"} class="hover:text-base-content transition-colors">Projects</.link>
-                <.link href={~p"/users/forgot-password"} class="hover:text-base-content transition-colors">Settings</.link>
+                <.link
+                  href={~p"/workspaces/#{@current_workspace.id}/apps"}
+                  class="hover:text-base-content transition-colors"
+                >
+                  Projects
+                </.link>
+                <.link
+                  href={~p"/users/forgot-password"}
+                  class="hover:text-base-content transition-colors"
+                >
+                  Settings
+                </.link>
               <% else %>
-                <.link href={~p"/users/log-in"} class="hover:text-base-content transition-colors">Sign In</.link>
-                <.link href={~p"/users/register"} class="hover:text-base-content transition-colors">Register</.link>
+                <.link href={~p"/users/log-in"} class="hover:text-base-content transition-colors">
+                  Sign In
+                </.link>
+                <.link href={~p"/users/register"} class="hover:text-base-content transition-colors">
+                  Register
+                </.link>
               <% end %>
             </div>
           </div>

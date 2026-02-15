@@ -14,12 +14,14 @@ defmodule AppPlannerWeb.AppLive.Export do
        |> put_flash(:error, "A workspace must be selected to view apps.")
        |> push_navigate(to: ~p"/workspaces")}
     else
-      case Planner.get_app(user, id, current_workspace.id) do # Corrected call
+      # Corrected call
+      case Planner.get_app(user, id, current_workspace.id) do
         nil ->
           {:ok,
            socket
            |> put_flash(:error, "This project is no longer available.")
-           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")} # Corrected routing
+           # Corrected routing
+           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
 
         app ->
           # Recursively load children and their features if needed
@@ -30,8 +32,8 @@ defmodule AppPlannerWeb.AppLive.Export do
            |> assign(:page_title, "Export - #{app.name}")
            |> assign(:app, app)
            |> assign(:current_user, user)
-           |> assign(:current_workspace, current_workspace) # Assign current_workspace
-          }
+           # Assign current_workspace
+           |> assign(:current_workspace, current_workspace)}
       end
     end
   end
@@ -43,17 +45,19 @@ defmodule AppPlannerWeb.AppLive.Export do
       <%!-- Controls: hidden during print --%>
       <div class="mb-12 flex justify-between items-center print:hidden border-b pb-6">
         <div>
-           <.link navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@app.id}"} class="text-xs font-bold text-slate-400 hover:text-primary flex items-center gap-1 mb-2">
-             <.icon name="hero-arrow-left" class="w-3 h-3" /> Back to Project
-           </.link>
-           <h1 class="text-xl font-bold">Export Project Documentation</h1>
+          <.link
+            navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@app.id}"}
+            class="text-xs font-bold text-slate-400 hover:text-primary flex items-center gap-1 mb-2"
+          >
+            <.icon name="hero-arrow-left" class="w-3 h-3" /> Back to Project
+          </.link>
+          <h1 class="text-xl font-bold">Export Project Documentation</h1>
         </div>
         <button
           onclick="window.print()"
           class="btn btn-primary btn-sm flex items-center gap-2"
         >
-          <.icon name="hero-printer" class="w-4 h-4" />
-          Print to PDF
+          <.icon name="hero-printer" class="w-4 h-4" /> Print to PDF
         </button>
       </div>
 
@@ -64,33 +68,43 @@ defmodule AppPlannerWeb.AppLive.Export do
           <div class="flex justify-between items-start mb-8">
             <div>
               <h1 class="text-3xl font-black uppercase tracking-tighter mb-2">{@app.name}</h1>
-              <p class="text-md font-bold text-slate-500 tracking-[0.1em]">PROJECT SPECIFICATION DOCUMENT</p>
+              <p class="text-md font-bold text-slate-500 tracking-[0.1em]">
+                PROJECT SPECIFICATION DOCUMENT
+              </p>
             </div>
             <div class="text-right">
-              <div class="text-5xl font-black text-primary/10 tracking-widest leading-none">#{@app.id}</div>
-              <div class="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-[0.2em]">Generated: {Calendar.strftime(DateTime.utc_now(), "%Y-%m-%d %H:%M")}</div>
+              <div class="text-5xl font-black text-primary/10 tracking-widest leading-none">
+                #{@app.id}
+              </div>
+              <div class="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-[0.2em]">
+                Generated: {Calendar.strftime(DateTime.utc_now(), "%Y-%m-%d %H:%M")}
+              </div>
             </div>
           </div>
 
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 py-10 border-y border-slate-100">
-             <div>
-               <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-2">Current Status</label>
-               <span class="text-xs font-black uppercase bg-slate-100 px-3 py-1 rounded">{@app.status}</span>
-             </div>
-             <div>
-               <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-2">Market Category</label>
-               <span class="text-sm font-bold uppercase tracking-tight">{@app.category}</span>
-             </div>
-             <div>
-               <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-2">Project Owner</label>
-               <span class="text-sm font-bold truncate tracking-tight">{@app.user.email}</span>
-             </div>
-             <div>
-               <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-2">Visibility Level</label>
-               <span class={"text-xs font-black uppercase #{if @app.visibility == "public", do: "text-success", else: "text-slate-400"}"}>
-                 {@app.visibility}
-               </span>
-             </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-2">
+                Current Status
+              </label>
+              <span class="text-xs font-black uppercase bg-slate-100 px-3 py-1 rounded">
+                {@app.status}
+              </span>
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-2">
+                Project Owner
+              </label>
+              <span class="text-sm font-bold truncate tracking-tight">{@app.user.email}</span>
+            </div>
+            <div>
+              <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-2">
+                Visibility Level
+              </label>
+              <span class={"text-xs font-black uppercase #{if @app.visibility == "public", do: "text-success", else: "text-slate-400"}"}>
+                {@app.visibility}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -116,7 +130,9 @@ defmodule AppPlannerWeb.AppLive.Export do
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <%= for {key, value} <- @app.custom_fields do %>
                   <div class="group border border-slate-100 p-5 rounded-xl hover:border-primary transition-colors">
-                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-2">{key}</label>
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-2">
+                      {key}
+                    </label>
                     <div class="text-sm font-bold break-all">
                       <.markdown content={value} compact={true} />
                     </div>
@@ -143,39 +159,48 @@ defmodule AppPlannerWeb.AppLive.Export do
                   <div class="flex justify-between items-center mb-8">
                     <h3 class="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
                       <span class="p-2 bg-primary/5 rounded-lg text-primary">
-                        <.icon name={if feature.icon, do: "hero-#{feature.icon}", else: "hero-bolt"} class="w-6 h-6" />
+                        <.icon
+                          name={if feature.icon, do: "hero-#{feature.icon}", else: "hero-bolt"}
+                          class="w-6 h-6"
+                        />
                       </span>
                       {feature.title}
                     </h3>
-                    <div class="flex items-center gap-2">
-                      <span class="text-[10px] font-black uppercase border-2 border-slate-900 px-3 py-1">{feature.status}</span>
-                    </div>
+                    <div class="flex items-center gap-2"></div>
                   </div>
 
                   <div class="grid grid-cols-1 md:grid-cols-12 gap-10">
                     <div class="md:col-span-8 space-y-8">
                       <div>
-                        <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">Feature Overview</h4>
+                        <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">
+                          Feature Overview
+                        </h4>
                         <.markdown content={feature.description || "No description provided."} />
                       </div>
 
                       <%= if feature.why_need || feature.why do %>
                         <div>
-                          <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">Rationale & Strategic Value</h4>
+                          <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">
+                            Rationale & Strategic Value
+                          </h4>
                           <.markdown content={feature.why_need || feature.why} />
                         </div>
                       <% end %>
 
                       <%= if feature.how_to_add do %>
                         <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                          <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">Proposed User Flow</h4>
+                          <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">
+                            Proposed User Flow
+                          </h4>
                           <.markdown content={feature.how_to_add} />
                         </div>
                       <% end %>
 
                       <%= if feature.how_to_implement do %>
                         <div>
-                          <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">Technical Implementation Strategy</h4>
+                          <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">
+                            Technical Implementation Strategy
+                          </h4>
                           <.markdown content={feature.how_to_implement} />
                         </div>
                       <% end %>
@@ -184,32 +209,46 @@ defmodule AppPlannerWeb.AppLive.Export do
                     <div class="md:col-span-4 space-y-6">
                       <div class="grid grid-cols-2 gap-4">
                         <div class="bg-slate-50 p-4 rounded-xl">
-                          <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Effort</label>
-                          <span class="text-sm font-black text-slate-900">{feature.time_estimate || "—"}</span>
+                          <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                            Effort
+                          </label>
+                          <span class="text-sm font-black text-slate-900">
+                            {feature.time_estimate || "—"}
+                          </span>
                         </div>
                         <div class="bg-slate-50 p-4 rounded-xl">
-                          <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Target Date</label>
-                          <span class="text-sm font-black text-slate-900">{feature.implementation_date || "—"}</span>
+                          <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                            Target Date
+                          </label>
+                          <span class="text-sm font-black text-slate-900">
+                            {feature.implementation_date || "—"}
+                          </span>
                         </div>
                       </div>
 
                       <%= if feature.pros do %>
                         <div class="border-l-4 border-emerald-500 pl-4 py-1">
-                          <label class="text-[9px] font-black text-emerald-600 uppercase mb-2 block tracking-widest">Strengths</label>
+                          <label class="text-[9px] font-black text-emerald-600 uppercase mb-2 block tracking-widest">
+                            Strengths
+                          </label>
                           <.markdown content={feature.pros} class="!text-xs" />
                         </div>
                       <% end %>
 
                       <%= if feature.cons do %>
                         <div class="border-l-4 border-rose-500 pl-4 py-1">
-                          <label class="text-[9px] font-black text-rose-600 uppercase mb-2 block tracking-widest">Challenges</label>
+                          <label class="text-[9px] font-black text-rose-600 uppercase mb-2 block tracking-widest">
+                            Challenges
+                          </label>
                           <.markdown content={feature.cons} class="!text-xs" />
                         </div>
                       <% end %>
 
                       <%= if feature.custom_fields && map_size(feature.custom_fields) > 0 do %>
                         <div class="pt-4 border-t border-slate-100">
-                          <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Feature Metadata</label>
+                          <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                            Feature Metadata
+                          </label>
                           <div class="grid grid-cols-2 gap-2">
                             <%= for {key, value} <- feature.custom_fields do %>
                               <div class="text-[10px]">
@@ -224,10 +263,18 @@ defmodule AppPlannerWeb.AppLive.Export do
                       <% end %>
 
                       <%= if feature.pr_link do %>
-                         <div class="pt-4 mt-4 border-t border-slate-100">
-                           <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Reference Links</label>
-                           <a href={feature.pr_link} target="_blank" class="text-[10px] font-mono font-black text-primary hover:underline truncate block">{feature.pr_link}</a>
-                         </div>
+                        <div class="pt-4 mt-4 border-t border-slate-100">
+                          <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                            Reference Links
+                          </label>
+                          <a
+                            href={feature.pr_link}
+                            target="_blank"
+                            class="text-[10px] font-mono font-black text-primary hover:underline truncate block"
+                          >
+                            {feature.pr_link}
+                          </a>
+                        </div>
                       <% end %>
                     </div>
                   </div>
@@ -252,7 +299,10 @@ defmodule AppPlannerWeb.AppLive.Export do
                     <div class="space-y-4 max-w-2xl">
                       <h3 class="text-4xl font-black uppercase tracking-tighter flex items-center gap-4">
                         <span class="p-3 bg-primary/10 rounded-2xl text-primary print:border print:border-primary">
-                          <.icon name={if child.icon, do: "hero-#{child.icon}", else: "hero-cube"} class="w-8 h-8" />
+                          <.icon
+                            name={if child.icon, do: "hero-#{child.icon}", else: "hero-cube"}
+                            class="w-8 h-8"
+                          />
                         </span>
                         {child.name}
                       </h3>
@@ -263,12 +313,10 @@ defmodule AppPlannerWeb.AppLive.Export do
 
                     <div class="flex flex-wrap gap-4 md:flex-col md:items-end">
                       <div class="bg-slate-50 p-4 rounded-xl min-w-[140px] text-right">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Status</label>
+                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                          Status
+                        </label>
                         <span class="text-sm font-black uppercase">{child.status}</span>
-                      </div>
-                      <div class="bg-slate-50 p-4 rounded-xl min-w-[140px] text-right">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Type</label>
-                        <span class="text-sm font-black uppercase font-mono">{child.category}</span>
                       </div>
                     </div>
                   </div>
@@ -276,7 +324,9 @@ defmodule AppPlannerWeb.AppLive.Export do
                   <%!-- Sub-Component Features --%>
                   <%= if length(child.features) > 0 do %>
                     <div class="space-y-8 pl-8 border-l-4 border-slate-50">
-                      <h4 class="text-xs font-black uppercase tracking-[0.4em] text-slate-400">System Modules & Features</h4>
+                      <h4 class="text-xs font-black uppercase tracking-[0.4em] text-slate-400">
+                        System Modules & Features
+                      </h4>
 
                       <div class="grid grid-cols-1 gap-12">
                         <%= for feature <- child.features do %>
@@ -284,37 +334,57 @@ defmodule AppPlannerWeb.AppLive.Export do
                             <div class="flex justify-between items-center mb-6">
                               <h5 class="text-xl font-black uppercase tracking-tighter flex items-center gap-3">
                                 <span class="p-2 bg-primary/5 rounded-lg text-primary print:border">
-                                  <.icon name={if feature.icon, do: "hero-#{feature.icon}", else: "hero-bolt"} class="w-4 h-4" />
+                                  <.icon
+                                    name={
+                                      if feature.icon, do: "hero-#{feature.icon}", else: "hero-bolt"
+                                    }
+                                    class="w-4 h-4"
+                                  />
                                 </span>
                                 {feature.title}
                               </h5>
-                              <span class="text-[10px] font-black uppercase bg-slate-100 px-3 py-1 rounded">{feature.status}</span>
+                              <span class="text-[10px] font-black uppercase bg-slate-100 px-3 py-1 rounded">
+                              </span>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
                               <div class="md:col-span-8 space-y-4">
                                 <div>
-                                  <label class="text-[8px] font-black uppercase text-slate-300 tracking-widest mb-1 block">Functional Requirements</label>
-                                  <.markdown content={feature.description || "No detail provided."} class="!text-xs opacity-80" />
+                                  <label class="text-[8px] font-black uppercase text-slate-300 tracking-widest mb-1 block">
+                                    Functional Requirements
+                                  </label>
+                                  <.markdown
+                                    content={feature.description || "No detail provided."}
+                                    class="!text-xs opacity-80"
+                                  />
                                 </div>
 
                                 <%= if feature.why_need || feature.why do %>
                                   <div>
-                                    <label class="text-[8px] font-black uppercase text-slate-300 tracking-widest mb-1 block">Strategic Rationale</label>
-                                    <.markdown content={feature.why_need || feature.why} class="!text-xs opacity-70" />
+                                    <label class="text-[8px] font-black uppercase text-slate-300 tracking-widest mb-1 block">
+                                      Strategic Rationale
+                                    </label>
+                                    <.markdown
+                                      content={feature.why_need || feature.why}
+                                      class="!text-xs opacity-70"
+                                    />
                                   </div>
                                 <% end %>
 
                                 <%= if feature.how_to_add do %>
                                   <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">Proposed User Flow</h4>
+                                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">
+                                      Proposed User Flow
+                                    </h4>
                                     <.markdown content={feature.how_to_add} />
                                   </div>
                                 <% end %>
 
                                 <%= if feature.how_to_implement do %>
                                   <div>
-                                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">Technical Implementation Strategy</h4>
+                                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3">
+                                      Technical Implementation Strategy
+                                    </h4>
                                     <.markdown content={feature.how_to_implement} />
                                   </div>
                                 <% end %>
@@ -323,37 +393,55 @@ defmodule AppPlannerWeb.AppLive.Export do
                               <div class="md:col-span-4 space-y-6">
                                 <div class="grid grid-cols-2 gap-4">
                                   <div class="bg-slate-50 p-4 rounded-xl">
-                                    <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Effort</label>
-                                    <span class="text-sm font-black text-slate-900">{feature.time_estimate || "—"}</span>
+                                    <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                                      Effort
+                                    </label>
+                                    <span class="text-sm font-black text-slate-900">
+                                      {feature.time_estimate || "—"}
+                                    </span>
                                   </div>
                                   <div class="bg-slate-50 p-4 rounded-xl">
-                                    <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Target Date</label>
-                                    <span class="text-sm font-black text-slate-900">{feature.implementation_date || "—"}</span>
+                                    <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                                      Target Date
+                                    </label>
+                                    <span class="text-sm font-black text-slate-900">
+                                      {feature.implementation_date || "—"}
+                                    </span>
                                   </div>
                                 </div>
 
                                 <%= if feature.pros do %>
                                   <div class="border-l-4 border-emerald-500 pl-4 py-1">
-                                    <label class="text-[9px] font-black text-emerald-600 uppercase mb-2 block tracking-widest">Strengths</label>
+                                    <label class="text-[9px] font-black text-emerald-600 uppercase mb-2 block tracking-widest">
+                                      Strengths
+                                    </label>
                                     <.markdown content={feature.pros} class="!text-xs" />
                                   </div>
                                 <% end %>
 
                                 <%= if feature.cons do %>
                                   <div class="border-l-4 border-rose-500 pl-4 py-1">
-                                    <label class="text-[9px] font-black text-rose-600 uppercase mb-2 block tracking-widest">Challenges</label>
+                                    <label class="text-[9px] font-black text-rose-600 uppercase mb-2 block tracking-widest">
+                                      Challenges
+                                    </label>
                                     <.markdown content={feature.cons} class="!text-xs" />
                                   </div>
                                 <% end %>
 
                                 <%= if feature.custom_fields && map_size(feature.custom_fields) > 0 do %>
                                   <div class="border-t border-slate-100 pt-2 mt-2">
-                                    <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Feature Metadata</label>
+                                    <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                                      Feature Metadata
+                                    </label>
                                     <div class="grid grid-cols-2 gap-2">
                                       <%= for {key, value} <- feature.custom_fields do %>
                                         <div class="text-[10px]">
-                                          <span class="font-black uppercase text-slate-400">{key}:</span>
-                                          <div class="font-bold inline-block"><.markdown content={value} compact={true} /></div>
+                                          <span class="font-black uppercase text-slate-400">
+                                            {key}:
+                                          </span>
+                                          <div class="font-bold inline-block">
+                                            <.markdown content={value} compact={true} />
+                                          </div>
                                         </div>
                                       <% end %>
                                     </div>
@@ -361,10 +449,18 @@ defmodule AppPlannerWeb.AppLive.Export do
                                 <% end %>
 
                                 <%= if feature.pr_link do %>
-                                   <div class="pt-4 mt-4 border-t border-slate-100">
-                                     <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">Reference Links</label>
-                                     <a href={feature.pr_link} target="_blank" class="text-[10px] font-mono font-black text-primary hover:underline truncate block">{feature.pr_link}</a>
-                                   </div>
+                                  <div class="pt-4 mt-4 border-t border-slate-100">
+                                    <label class="text-[9px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
+                                      Reference Links
+                                    </label>
+                                    <a
+                                      href={feature.pr_link}
+                                      target="_blank"
+                                      class="text-[10px] font-mono font-black text-primary hover:underline truncate block"
+                                    >
+                                      {feature.pr_link}
+                                    </a>
+                                  </div>
                                 <% end %>
                               </div>
                             </div>
@@ -381,8 +477,12 @@ defmodule AppPlannerWeb.AppLive.Export do
 
         <%!-- Footer --%>
         <footer class="pt-24 border-t border-slate-100 mt-32 text-center opacity-30">
-          <p class="text-[10px] font-black uppercase tracking-[0.5em]">Project Documentation Master • Page End</p>
-          <p class="text-[8px] mt-2 font-bold tracking-widest uppercase">Proprietary and Confidential</p>
+          <p class="text-[10px] font-black uppercase tracking-[0.5em]">
+            Project Documentation Master • Page End
+          </p>
+          <p class="text-[8px] mt-2 font-bold tracking-widest uppercase">
+            Proprietary and Confidential
+          </p>
         </footer>
       </div>
     </div>

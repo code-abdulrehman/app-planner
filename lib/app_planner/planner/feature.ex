@@ -6,7 +6,6 @@ defmodule AppPlanner.Planner.Feature do
     field(:title, :string)
     field(:icon, :string)
     field(:description, :string)
-    field(:status, :string, default: "Planned")
 
     belongs_to(:app, AppPlanner.Planner.App)
     belongs_to(:user, AppPlanner.Accounts.User)
@@ -24,7 +23,6 @@ defmodule AppPlanner.Planner.Feature do
       :title,
       :icon,
       :description,
-      :status,
       :app_id,
       :user_id,
       :last_updated_by_id

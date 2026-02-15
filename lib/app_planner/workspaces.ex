@@ -21,13 +21,14 @@ defmodule AppPlanner.Workspaces do
     |> Enum.map(& &1.workspace)
   end
 
+  def list_workspace_members(%Workspace{id: id}), do: list_workspace_members(id)
+
   def list_workspace_members(workspace_id) do
     UserWorkspace
     |> where([uw], uw.workspace_id == ^workspace_id)
     |> Repo.all()
     |> Repo.preload(:user)
     |> Enum.sort_by(&(&1.role != "owner"))
-    |> Enum.map(& &1.user)
   end
 
   @doc """
@@ -59,17 +60,24 @@ defmodule AppPlanner.Workspaces do
   Creates a workspace.
   """
   def create_workspace(%User{} = current_user, attrs) do
+    # Normalize keys to strings to prevent mixed-key errors in Ecto.cast
+    attrs = Map.new(attrs, fn {k, v} -> {to_string(k), v} end)
+    owner_email = attrs["owner_email"]
+
     # A user can only create a workspace where they are the owner.
     # A super_admin can create a workspace for any owner.
     cond do
       # Super admin creating for a specific owner
-      AppPlanner.Accounts.super_admin?(current_user) and Map.has_key?(attrs, :owner_email) ->
-        case AppPlanner.Accounts.get_user_by_email(attrs.owner_email) do
+      AppPlanner.Accounts.super_admin?(current_user) and owner_email ->
+        case AppPlanner.Accounts.get_user_by_email(owner_email) do
           nil ->
             {:error, :owner_not_found}
 
           owner_user ->
-            attrs_with_owner_id = Map.put(attrs, :owner_id, owner_user.id)
+            attrs_with_owner_id =
+              attrs
+              |> Map.delete("owner_email")
+              |> Map.put("owner_id", owner_user.id)
 
             %Workspace{}
             |> Workspace.changeset(attrs_with_owner_id)
@@ -86,14 +94,25 @@ defmodule AppPlanner.Workspaces do
         end
 
       # Regular user creating their own workspace
-      not Map.has_key?(attrs, :owner_email) ->
+      is_nil(owner_email) ->
+        # Use current user as owner
+        attrs_with_owner = Map.put(attrs, "owner_id", current_user.id)
+
         %Workspace{}
-        |> Workspace.changeset(Map.put(attrs, :owner_id, current_user.id))
+        |> Workspace.changeset(attrs_with_owner)
         |> Repo.insert()
         |> case do
           {:ok, workspace} ->
-            # Add the creating user to the workspace with 'owner' role
-            create_user_workspace(current_user, workspace, current_user, "owner")
+            # CRITICAL: Add the creator as a member of the workspace too!
+            # We bypass the permission check here because we are establishing the initial owner.
+            %UserWorkspace{}
+            |> UserWorkspace.changeset(%{
+              user_id: current_user.id,
+              workspace_id: workspace.id,
+              role: "owner"
+            })
+            |> Repo.insert()
+
             {:ok, workspace}
 
           error ->
@@ -221,9 +240,6 @@ defmodule AppPlanner.Workspaces do
 
           %AppPlanner.Accounts.UserToken{workspace: workspace, invited_email: invited_email} =
               user_token ->
-            # Delete the token after successful verification
-            Repo.delete!(user_token)
-
             user_to_add =
               cond do
                 current_user && current_user.email == invited_email ->
@@ -257,8 +273,13 @@ defmodule AppPlanner.Workspaces do
                 })
                 |> Repo.insert()
                 |> case do
-                  {:ok, _user_workspace} -> {:ok, user, workspace}
-                  error -> error
+                  {:ok, _user_workspace} ->
+                    # Delete the token only after successful join
+                    Repo.delete!(user_token)
+                    {:ok, user, workspace}
+
+                  error ->
+                    error
                 end
             end
         end
@@ -287,6 +308,7 @@ defmodule AppPlanner.Workspaces do
     case get_user_workspace(user, workspace) do
       %UserWorkspace{role: "owner"} -> true
       %UserWorkspace{role: "editor"} -> true
+      %UserWorkspace{role: "member"} -> true
       _ -> false
     end
   end

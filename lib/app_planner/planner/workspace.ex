@@ -7,6 +7,7 @@ defmodule AppPlanner.Planner.Workspace do
     field(:visibility, :string, default: "private")
     # For custom Kanban columns
     field(:status_config, :map)
+    field(:owner_email, :string, virtual: true)
 
     belongs_to(:owner, AppPlanner.Accounts.User, foreign_key: :owner_id)
 
@@ -15,7 +16,7 @@ defmodule AppPlanner.Planner.Workspace do
       on_delete: :delete_all
     )
 
-    has_many(:apps, AppPlanner.Planner.App)
+    has_many(:apps, AppPlanner.Planner.App, on_delete: :delete_all)
 
     timestamps()
   end

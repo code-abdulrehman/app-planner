@@ -13,19 +13,13 @@ defmodule AppPlannerWeb.WorkspaceLive.InvitationAccept do
         {:ok,
          socket
          |> put_flash(:info, "You have successfully joined the workspace '#{workspace.name}'.")
-         |> then(fn socket ->
-           if is_nil(current_user) do
-             redirect(socket, to: ~p"/users/log-in/#{token}")
-           else
-             redirect(socket, to: ~p"/workspaces/#{workspace.id}")
-           end
-         end)}
+         |> push_navigate(to: ~p"/workspaces/#{workspace.id}/board")}
 
       {:prompt_register, invited_email, workspace} ->
-        # User needs to register, redirect to registration with pre-filled email and token
+        # User needs to register, redirect to registration with invite_token
         {:ok,
          socket
-         |> put_flash(:info, "Please register to join the workspace '#{workspace.name}'.")
+         |> put_flash(:info, "Please create an account to join '#{workspace.name}'.")
          |> push_navigate(to: ~p"/users/register?email=#{invited_email}&invite_token=#{token}")}
 
       {:error, :invalid_or_expired_token} ->
@@ -54,12 +48,10 @@ defmodule AppPlannerWeb.WorkspaceLive.InvitationAccept do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} current_workspace={@current_workspace}>
-      <div class="mx-auto max-w-sm text-center">
-        <.header>Processing Invitation...</.header>
-        <p class="mt-4 text-sm text-gray-700">Please wait while we process your invitation.</p>
-      </div>
-    </Layouts.app>
+    <div class="mx-auto max-w-sm text-center">
+      <.header>Processing Invitation...</.header>
+      <p class="mt-4 text-sm text-gray-700">Please wait while we process your invitation.</p>
+    </div>
     """
   end
 end

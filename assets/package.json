@@ -3,6 +3,7 @@
     "deploy": "cd .. && mix assets.deploy"
   },
   "dependencies": {
+    "easymde": "^2.20.0",
     "sortablejs": "^1.15.6"
   }
 }
