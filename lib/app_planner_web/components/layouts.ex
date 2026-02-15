@@ -22,7 +22,9 @@ defmodule AppPlannerWeb.Layouts do
       <header class="h-14 border-b border-base-200 bg-base-100/80 backdrop-blur-md shrink-0 flex items-center justify-between px-6 sticky top-0 z-40">
         <div class="flex items-center gap-4">
            <.link navigate={~p"/workspaces"} class="flex items-center gap-2 group">
-              <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-content font-black text-sm shadow-sm group-hover:-rotate-20 transition-transform">A</div>
+              <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-content font-black text-sm shadow-sm group-hover:-rotate-20 transition-transform">
+                 <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
+          </div>
               <span class="font-black tracking-tighter text-lg text-base-content">AppPlanner</span>
            </.link>
            <div class="flex items-center gap-3 ml-4 pl-4 border-l border-base-200">
@@ -104,7 +106,7 @@ defmodule AppPlannerWeb.Layouts do
 
   def theme_toggle(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border bg-base-300 rounded-full w-24 h-8 overflow-hidden">
+    <div class="card relative flex flex-row items-center border border-base-100 bg-base-200 rounded-full w-24 h-8 overflow-hidden">
       <div class="absolute w-1/3 h-full rounded-full bg-primary left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 transition-all duration-300" />
 
       <button

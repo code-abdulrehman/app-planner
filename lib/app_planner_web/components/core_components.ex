@@ -651,7 +651,7 @@ defmodule AppPlannerWeb.CoreComponents do
               phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
               phx-key="escape"
               phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
-              class="relative bg-base-100 rounded-[2rem] shadow-2xl ring-1 ring-base-200 transition"
+              class="relative bg-base-100 rounded-lg shadow-2xl ring-1 ring-base-200 transition"
             >
               <div class="absolute top-6 right-5">
                 <button

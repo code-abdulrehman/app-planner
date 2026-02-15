@@ -383,11 +383,11 @@ defmodule AppPlannerWeb.TaskLive.Index do
           </.link>
         </div>
       </aside>
-      
+
     <!-- Main Content Area -->
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Header -->
-        <header class="h-12 border-b border-base-200 bg-base-50 backdrop-blur-md flex flex-col justify-center px-4 sticky top-0 z-30">
+        <header class="h-11 border-b border-base-200 bg-base-50 backdrop-blur-md flex flex-col justify-center px-4 sticky top-0 z-30">
           <div class="flex items-center justify-between w-full">
             <div class="flex items-center gap-4">
               <button
@@ -399,7 +399,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   class="w-5 h-5"
                 />
               </button>
-              
+
     <!-- Breadcrumbs -->
               <div :if={@app && @feature} class="hidden md:flex items-center gap-2">
                 <span class="text-[10px] font-bold text-base-content/60">{@app.name}</span>
@@ -412,7 +412,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   Select a module from the sidebar
                 </div>
               </div>
-              
+
     <!-- Avatars Group -->
               <div class="flex items-center gap-2 pl-6 border-l border-base-200">
                 <div class="flex -space-x-1.5">
@@ -436,7 +436,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
           </div>
         </header>
         <!-- Kanban Scroll Area -->
-        <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 pt-2 bg-base-100/50">
+        <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 pt-2 bg-base-100/50 ">
           <%= if is_nil(@feature) do %>
             <div class="h-full flex flex-col items-center justify-center text-center p-20 bg-base-100 rounded-[3rem] border border-base-200 shadow-sm m-8 animate-in fade-in zoom-in duration-700">
               <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-primary/20 to-primary/5 flex items-center justify-center text-primary shadow-2xl shadow-primary/10 ring-8 ring-base-50 mb-10 border border-primary/10">
@@ -471,7 +471,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
               </div>
             </div>
           <% else %>
-            <div id="kanban-columns" phx-hook="SortableColumns" class="flex gap-6 h-full min-w-max">
+            <div id="kanban-columns" phx-hook="SortableColumns" class="flex gap-6 h-[calc(100vh-100px)] min-w-max">
               <%= for status <- @statuses do %>
                 <div
                   id={"col-#{String.replace(status, ~r/[^a-zA-Z0-9]/, "-")}"}
@@ -520,7 +520,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                         <.icon name="hero-plus" class="w-4.5 h-2" />
                       </.link>
                       <div class="w-0.5 h-5 bg-base-200 rounded mx-0.5" />
-                      
+
     <!-- Column Menu -->
                       <div class="dropdown dropdown-end">
                         <button
@@ -559,7 +559,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   </div>
 
                   <div
-                    class="flex-1 p-3 space-y-3 overflow-y-auto scrollbar-hidden bg-base-content/4"
+                    class="flex-1 p-3 space-y-3 overflow-y-auto scrollbar-hidden bg-base-content/4 overflow-x-visible"
                     id={"tasks-#{String.replace(status, ~r/[^a-zA-Z0-9]/, "-")}"}
                     phx-hook="Sortable"
                     data-status={status}
@@ -576,7 +576,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                       <div
                         id={"task-#{task.id}"}
                         data-id={task.id}
-                        class="bg-base-100 p-4 rounded-lg shadow-sm border border-base-200 hover:border-primary hover:shadow-md transition-all cursor-pointer group/card relative overflow-hidden"
+                        class="bg-base-100 p-4 rounded-lg shadow-sm border border-base-200 hover:border-primary hover:shadow-md transition-all cursor-pointer group/card relative overflow-visible"
                       >
                         <.link
                           patch={
@@ -719,61 +719,61 @@ defmodule AppPlannerWeb.TaskLive.Index do
                               >
                                 <.icon name="hero-user" class="w-3.5 h-3.5" />
                               </div>
-
-                              <%= if @editing_task_id == task.id and @editing_field == "assignee_id" do %>
-                                <div
-                                  class="absolute z-[50] top-full mb-3 right-0 w-56 bg-base-100 shadow-2xl rounded-2xl border border-base-200 p-2 space-y-1 animate-in slide-in-from-bottom-2 duration-200"
-                                  phx-click-away="cancel_edit"
-                                >
-                                  <div class="px-3 py-2 text-[9px] font-bold text-base-content/30 border-b border-base-100 mb-1">
-                                    Assign To
-                                  </div>
-                                  <div class="max-h-48 overflow-y-auto scrollbar-hidden">
-                                    <%= for member <- @workspace_members do %>
-                                      <button
-                                        phx-click={
-                                          JS.push("save_field",
-                                            value: %{
-                                              value: to_string(member.user_id),
-                                              field: "assignee_id",
-                                              task_id: task.id
-                                            }
-                                          )
-                                        }
-                                        class="w-full text-left px-2 py-2 text-[10px] font-bold rounded-xl hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-3 group/member js-no-drag"
-                                      >
-                                        <div class="w-6 h-6 rounded-lg bg-primary/5 group-hover/member:bg-primary/20 flex items-center justify-center text-[9px]">
-                                          {String.at(member.user.email, 0) |> String.upcase()}
-                                        </div>
-                                        <span class="truncate">{member.user.email}</span>
-                                      </button>
-                                    <% end %>
-                                    <button
-                                      phx-click={
-                                        JS.push("save_field",
-                                          value: %{field: "assignee_id", value: "", task_id: task.id}
-                                        )
-                                      }
-                                      class="w-full text-left px-2 py-2 text-[10px] font-bold rounded-xl hover:bg-error/10 hover:text-error transition-all flex items-center gap-3 border-t border-base-100 mt-1 js-no-drag"
-                                    >
-                                      <div class="w-6 h-6 rounded-lg bg-error/5 flex items-center justify-center text-[9px]">
-                                        <.icon name="hero-x-mark" class="w-3.5 h-3.5" />
-                                      </div>
-                                      <span>Remove Assignee</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              <% end %>
                             </div>
                           </div>
                         </div>
+                        <%= if @editing_task_id == task.id and @editing_field == "assignee_id" do %>
+                          <div
+                            class="absolute z-[9999] top-full mt-2 right-0 w-56 bg-base-100 shadow-2xl rounded-2xl border border-base-200 p-2 space-y-1 animate-in slide-in-from-bottom-2 duration-200"
+                            phx-click-away="cancel_edit"
+                          >
+                            <div class="px-3 py-2 text-[9px] font-bold text-base-content/30 border-b border-base-100 mb-1">
+                              Assign To
+                            </div>
+                            <div class="max-h-48 overflow-y-auto scrollbar-hidden">
+                              <%= for member <- @workspace_members do %>
+                                <button
+                                  phx-click={
+                                    JS.push("save_field",
+                                      value: %{
+                                        value: to_string(member.user_id),
+                                        field: "assignee_id",
+                                        task_id: task.id
+                                      }
+                                    )
+                                  }
+                                  class="w-full text-left px-2 py-2 text-[10px] font-bold rounded-xl hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-3 group/member js-no-drag"
+                                >
+                                  <div class="w-6 h-6 rounded-lg bg-primary/5 group-hover/member:bg-primary/20 flex items-center justify-center text-[9px]">
+                                    {String.at(member.user.email, 0) |> String.upcase()}
+                                  </div>
+                                  <span class="truncate">{member.user.email}</span>
+                                </button>
+                              <% end %>
+                              <button
+                                phx-click={
+                                  JS.push("save_field",
+                                    value: %{field: "assignee_id", value: "", task_id: task.id}
+                                  )
+                                }
+                                class="w-full text-left px-2 py-2 text-[10px] font-bold rounded-xl hover:bg-error/10 hover:text-error transition-all flex items-center gap-3 border-t border-base-100 mt-1 js-no-drag"
+                              >
+                                <div class="w-6 h-6 rounded-lg bg-error/5 flex items-center justify-center text-[9px]">
+                                  <.icon name="hero-x-mark" class="w-3.5 h-3.5" />
+                                </div>
+                                <span>Remove Assignee</span>
+                              </button>
+                            </div>
+                          </div>
+                        <% end %>
                       </div>
                     <% end %>
+                    </div>
                     <div class="px-1 pb-3 js-no-drag">
                       <%= if @inline_add_status == status do %>
                         <div
                           id={"inline-add-container-#{status |> String.downcase() |> String.replace(~r/[^a-z0-9]/, "-")}"}
-                          class="bg-base-100 p-4 rounded-xl shadow-xl border border-primary ring-1 ring-primary/20 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                          class="bg-base-100 p-4 rounded-xl shadow-xl border border-primary ring-1 ring-primary/20 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-visible"
                         >
                           <form
                             id={"inline-add-form-#{status |> String.downcase() |> String.replace(~r/[^a-z0-9]/, "-")}"}
@@ -802,27 +802,28 @@ defmodule AppPlannerWeb.TaskLive.Index do
                                   />
                                   <input type="hidden" name="icon" value={@inline_add_icon} />
                                 </button>
+
                                 <div
-                                  tabindex="0"
-                                  class="dropdown-content z-[20] p-2 shadow-2xl bg-base-100 rounded-xl border border-base-200 w-48 mb-2 flex flex-wrap gap-1"
-                                >
-                                  <%= for icon <- ~w(rocket-launch sparkles bug-ant bolt star fire heart cube globe-alt cpu-chip light-bulb beaker cloud) do %>
-                                    <button
-                                      type="button"
-                                      phx-click={JS.push("set_inline_icon", value: %{icon: icon})}
-                                      class={"p-1.5 rounded-lg hover:bg-primary/10 transition-all #{if @inline_add_icon == icon, do: "bg-primary/20 text-primary", else: "text-base-content/40 hover:text-primary"}"}
-                                    >
-                                      <.icon name={"hero-#{icon}"} class="w-3 h-3" />
-                                    </button>
-                                  <% end %>
-                                </div>
+                                    tabindex="0"
+                                    class="dropdown-content z-[999] p-2 shadow-2xl bg-base-100 rounded-xl border border-base-200 w-48 mb-2 flex flex-wrap gap-1"
+                                  >
+                                    <%= for icon <- ~w(rocket-launch sparkles bug-ant bolt star fire heart cube globe-alt cpu-chip light-bulb beaker cloud) do %>
+                                      <button
+                                        type="button"
+                                        phx-click={JS.push("set_inline_icon", value: %{icon: icon})}
+                                        class={"p-1.5 rounded-lg hover:bg-primary/10 transition-all #{if @inline_add_icon == icon, do: "bg-primary/20 text-primary", else: "text-base-content/40 hover:text-primary"}"}
+                                      >
+                                        <.icon name={"hero-#{icon}"} class="w-3 h-3" />
+                                      </button>
+                                    <% end %>
+                                  </div>
                               </div>
                               <div class="flex-1">
                                 <input
                                   name="title"
                                   value={@inline_add_title}
                                   placeholder="Type a title..."
-                                  class="w-full bg-transparent border-none focus:ring-0 p-0 text-sm font-medium text-base-content leading-tight placeholder:text-base-content/20"
+                                  class="w-full bg-transparent border-none focus:ring-0 p-0 text-md font-medium text-base-content leading-tight placeholder:text-base-content/20"
                                   autofocus
                                   required
                                   autocomplete="off"
@@ -831,10 +832,11 @@ defmodule AppPlannerWeb.TaskLive.Index do
                             </div>
 
                             <div class="flex items-center justify-between pt-3 border-t border-base-100">
-                              <div class="flex items-center gap-2 flex-1">
+                              <div class="flex items-center gap-2 flex-1 h-auto">
                                 <select
                                   name="assignee_id"
-                                  class="select select-ghost select-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black uppercase h-7 px-2 min-h-0 min-w-[100px] rounded-lg"
+                                  onclick="event.stopPropagation()"
+                                  class="pointer-events-auto select select-ghost select-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black uppercase h-7 px-2 min-h-0 min-w-[100px] rounded-lg"
                                 >
                                   <option value="">Unassigned</option>
                                   <%= for member <- @workspace_members do %>
@@ -879,7 +881,6 @@ defmodule AppPlannerWeb.TaskLive.Index do
                         </button>
                       <% end %>
                     </div>
-                  </div>
                 </div>
               <% end %>
 
@@ -1097,7 +1098,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                 </form>
               <% else %>
                 <h2
-                  class="text-2xl font-black text-base-content truncate editable-field transition-colors pr-8 cursor-pointer hover:text-primary"
+                  class="text-2xl font-black text-base-content line-height-[1] line-clamp-2 editable-field transition-colors pr-8 cursor-pointer hover:text-primary"
                   phx-click="edit_field"
                   phx-value-task_id={@task.id}
                   phx-value-field="modal-title"
@@ -1105,11 +1106,6 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   {@task.title}
                 </h2>
               <% end %>
-              <div class="flex items-center gap-2 mt-1">
-                <span class="text-[10px] font-black uppercase tracking-widest text-base-content/30 border border-base-200 px-2 py-0.5 rounded">
-                  Task
-                </span>
-              </div>
             </div>
           </div>
           <!--
@@ -1137,14 +1133,14 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   </h3>
                 </div>
 
-                <div class="group relative bg-base-50/50 rounded-lg border border-base-200 min-h-[100px] hover:border-primary/30 transition-all">
+                <div class="group relative bg-base-50/50 rounded-lg p-5 border border-base-200 min-h-[100px] hover:border-primary/30 transition-all">
                   <%= if @editing_task_id == @task.id and @editing_field == "modal-description" do %>
                     <form phx-submit="save_field">
                       <input type="hidden" name="field" value="description" />
                       <textarea
                         id={"task-desc-editor-#{@task.id}"}
                         name="value"
-                        class="w-full min-h-[300px] markdown-editor-textarea p-4 outline-none resize-y"
+                        class="w-full min-h-[300px] markdown-editor-textarea outline-none resize-y"
                         placeholder="Detailed description (Markdown supported)..."
                         autofocus
                       >{@task.description}</textarea>
@@ -1166,7 +1162,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     </form>
                   <% else %>
                     <div
-                      class="text-base leading-relaxed text-base-content editable-field markdown-content break-words overflow-wrap-anywhere min-h-[200px] p-5"
+                      class="text-base leading-relaxed text-base-content editable-field markdown-content break-words overflow-wrap-anywhere min-h-[200px]"
                       phx-click="edit_field"
                       phx-value-task_id={@task.id}
                       phx-value-field="modal-description"
@@ -1180,7 +1176,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   <% end %>
                 </div>
               </div>
-              
+
     <!-- Rationale Section -->
               <div class="space-y-4">
                 <h3 class="text-[11px] font-black uppercase tracking-widest text-base-content/40 flex items-center gap-2">
@@ -1229,7 +1225,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   <% end %>
                 </div>
               </div>
-              
+
     <!-- Pros & Cons Grid -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-4">
@@ -1328,7 +1324,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   </div>
                 </div>
               </div>
-              
+
     <!-- Strategy & User Flow -->
               <div class="space-y-6">
                 <div>
@@ -1427,7 +1423,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   </div>
                 </div>
               </div>
-              
+
     <!-- Comments Section -->
               <div class="divider"></div>
               <div class="space-y-6 pb-20">
@@ -1455,7 +1451,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   <% end %>
                 </div>
 
-                <form phx-submit="add_comment" class="space-y-3 rounded-lg border border-base-200/50">
+                <form phx-submit="add_comment" class="space-y-3 rounded-lg border border-base-200">
                   <textarea
                     id={"task-comment-editor-#{@task.id}"}
                     name="content"
@@ -1474,7 +1470,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                 </form>
               </div>
             </div>
-            
+
     <!-- Right Side: Sidebar Metadata -->
             <div class="space-y-6 bg-base-50/30 p-5 rounded-lg border border-base-200/50 h-fit sticky top-0">
               <div class="space-y-5">
@@ -1528,7 +1524,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     <% end %>
                   </div>
                 </div>
-                
+
     <!-- Assignee -->
                 <div class="space-y-1.5">
                   <label class="text-[10px] font-black uppercase tracking-widest text-base-content/30">
@@ -1600,7 +1596,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     <% end %>
                   </div>
                 </div>
-                
+
     <!-- Metadata Grid -->
                 <div class="grid grid-cols-2 gap-4">
                   <div class="space-y-1.5">
@@ -1693,8 +1689,8 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     </div>
                   </div>
                   <!-- Dates & Links -->
-                  <div class="space-y-4 pt-2">
-                    <div class="flex items-center justify-between text-[11px]">
+                  <div class="space-y-4 pt-2 col-span-2">
+                    <div class="flex items-center justify-between text-[11px] w-full">
                       <span class="font-bold text-base-content/30 uppercase tracking-widest">
                         Due Date
                       </span>
@@ -1781,24 +1777,22 @@ defmodule AppPlannerWeb.TaskLive.Index do
                       <% end %>
                     </div>
                   </div>
+                  <div class="flex flex-col gap-2 col-span-2">
+                    <span class="text-[9px] text-base-content/20 font-bold uppercase">Activity</span>
+                    <div class="text-[9px] text-base-content/40 flex justify-between">
+                      <span>Created</span>
+                      <span>{Calendar.strftime(@task.inserted_at, "%b %d, %Y")}</span>
+                    </div>
+                    <div class="text-[9px] text-base-content/40 flex justify-between">
+                      <span>Updated</span>
+                      <span>{Calendar.strftime(@task.updated_at, "%b %d, %Y")}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="divider opacity-5"></div>
-
-          <div class="flex flex-col gap-2">
-            <span class="text-[9px] text-base-content/20 font-bold uppercase">Activity</span>
-            <div class="text-[9px] text-base-content/40 flex justify-between">
-              <span>Created</span>
-              <span>{Calendar.strftime(@task.inserted_at, "%b %d, %Y")}</span>
-            </div>
-            <div class="text-[9px] text-base-content/40 flex justify-between">
-              <span>Updated</span>
-              <span>{Calendar.strftime(@task.updated_at, "%b %d, %Y")}</span>
-            </div>
-          </div>
         </div>
       </div>
     </.modal>

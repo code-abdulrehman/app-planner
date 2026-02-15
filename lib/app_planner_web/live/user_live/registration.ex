@@ -10,7 +10,7 @@ defmodule AppPlannerWeb.UserLive.Registration do
     <div class="max-w-md mx-auto py-24 px-6 text-center">
       <div class="mb-12">
         <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">
-          A
+           <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
         </div>
         <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Create Account</h1>
         <p class="text-sm text-base-content/40 font-medium italic">
@@ -21,7 +21,7 @@ defmodule AppPlannerWeb.UserLive.Registration do
         </p>
       </div>
 
-      <div class="bg-base-50/50 border border-base-200 rounded-lg p-8">
+      <div class="bg-base-50/50 border border-base-200 rounded-lg p-3 w-[400px]">
         <.form
           for={@form}
           id="registration_form"
