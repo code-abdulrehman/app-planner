@@ -6,6 +6,8 @@ defmodule AppPlannerWeb.UserAuth do
 
   alias AppPlanner.Accounts
   alias AppPlanner.Accounts.Scope
+  # New alias
+  alias AppPlanner.Workspaces
 
   # Make the remember me cookie valid for 14 days. This should match
   # the session validity setting in UserToken.
@@ -67,12 +69,31 @@ defmodule AppPlannerWeb.UserAuth do
   def fetch_current_scope_for_user(conn, _opts) do
     with {token, conn} <- ensure_user_token(conn),
          {user, token_inserted_at} <- Accounts.get_user_by_session_token(token) do
+      conn =
+        conn
+        |> assign(:current_scope, Scope.for_user(user))
+        |> assign(:is_super_admin, Accounts.super_admin?(user))
+
+      # Fetch user's workspaces
+      user_workspaces = Workspaces.list_user_workspaces(user)
+
+      # Attempt to get current_workspace from session
+      current_workspace =
+        if current_workspace_id = get_session(conn, :current_workspace_id) do
+          Enum.find(user_workspaces, &(&1.id == current_workspace_id))
+        else
+          List.first(user_workspaces)
+        end
+
       conn
-      |> assign(:current_scope, Scope.for_user(user))
-      |> assign(:is_super_admin, Accounts.super_admin?(user))
+      |> assign(:current_workspace, current_workspace)
       |> maybe_reissue_user_session_token(user, token_inserted_at)
     else
-      nil -> assign(conn, :current_scope, Scope.for_user(nil)) |> assign(:is_super_admin, false)
+      nil ->
+        assign(conn, :current_scope, Scope.for_user(nil))
+        |> assign(:is_super_admin, false)
+        # Assign nil if no user
+        |> assign(:current_workspace, nil)
     end
   end
 
@@ -249,7 +270,8 @@ defmodule AppPlannerWeb.UserAuth do
   def on_mount(:require_super_admin, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 
-    if socket.assigns.current_scope && socket.assigns.current_scope.user && Accounts.super_admin?(socket.assigns.current_scope.user) do
+    if socket.assigns.current_scope && socket.assigns.current_scope.user &&
+         Accounts.super_admin?(socket.assigns.current_scope.user) do
       {:cont, socket}
     else
       {:halt,
@@ -270,17 +292,32 @@ defmodule AppPlannerWeb.UserAuth do
         Scope.for_user(user)
       end)
 
-    user = socket.assigns.current_scope && socket.assigns.current_scope.user
-    Phoenix.Component.assign(socket, :is_super_admin, Accounts.super_admin?(user))
+    # Safely get user from current_scope
+    user =
+      if socket.assigns.current_scope, do: Map.get(socket.assigns.current_scope, :user), else: nil
+
+    socket = Phoenix.Component.assign(socket, :is_super_admin, Accounts.super_admin?(user))
+
+    # Fetch user's workspaces
+    user_workspaces = if user, do: Workspaces.list_user_workspaces(user), else: []
+
+    # Attempt to get current_workspace from session
+    current_workspace_id = session["current_workspace_id"]
+
+    current_workspace =
+      if user && current_workspace_id do
+        Enum.find(user_workspaces, &(&1.id == current_workspace_id))
+      else
+        List.first(user_workspaces)
+      end
+
+    Phoenix.Component.assign(socket, :current_workspace, current_workspace)
   end
 
   @doc "Returns the path to redirect to after log in."
-  # the user was already logged in, redirect to settings
-  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{}}}}) do
-    ~p"/users/settings"
+  def signed_in_path(_conn) do
+    ~p"/board"
   end
-
-  def signed_in_path(_), do: ~p"/"
 
   @doc """
   Plug for routes that require the user to be authenticated.

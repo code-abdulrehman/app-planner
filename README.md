@@ -25,7 +25,7 @@ A premium project specification and roadmap management tool built with Elixir & 
 
 3. **Run Server**:
    ```bash
-   mix phx.server
+  iex -S mix phx.server
    # Visit localhost:4006
    ```
 

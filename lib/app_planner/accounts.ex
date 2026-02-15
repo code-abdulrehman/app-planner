@@ -83,14 +83,31 @@ defmodule AppPlanner.Accounts do
     # First user (by id) becomes super_admin
     case result do
       {:ok, user} ->
-        if Repo.aggregate(User, :count, :id) == 1 do
-          case user |> Ecto.Changeset.change(%{role: "super_admin"}) |> Repo.update() do
-            {:ok, updated} -> {:ok, updated}
-            err -> err
-          end
-        else
-          {:ok, user}
+        # Create a default workspace for the new user
+        case AppPlanner.Workspaces.create_workspace(user, %{name: "My Workspace"}) do
+          {:ok, _workspace} ->
+            if Repo.aggregate(User, :count, :id) == 1 do
+              case user |> Ecto.Changeset.change(%{role: "super_admin"}) |> Repo.update() do
+                {:ok, updated} -> {:ok, updated}
+                err -> err
+              end
+            else
+              {:ok, user}
+            end
+
+          {:error, %Ecto.Changeset{} = changeset} ->
+            # If workspace creation fails, we might want to delete the user or log the error
+            # For now, we'll return an error associated with the user registration process
+            # or try to clean up the user if they were created.
+            # A simpler approach for a first pass is to return the workspace error.
+            # For a more robust solution, we might need a transaction.
+            {:error, changeset}
+
+          _ ->
+            # Catch other potential errors from create_workspace
+            {:error, :workspace_creation_failed}
         end
+
       error ->
         error
     end
@@ -129,7 +146,8 @@ defmodule AppPlanner.Accounts do
   Updates another user's password. Only super_admin can do this.
   """
   def update_user_password_by_admin(admin, user, attrs) do
-    unless super_admin?(admin), do: raise "Only super admin can change another user's password"
+    unless super_admin?(admin), do: raise("Only super admin can change another user's password")
+
     user
     |> User.password_changeset(attrs)
     |> update_user_and_delete_all_tokens()
@@ -139,7 +157,7 @@ defmodule AppPlanner.Accounts do
   Deletes a user. Only super_admin can do this.
   """
   def delete_user(admin, user) do
-    unless super_admin?(admin), do: raise "Only super admin can delete a user"
+    unless super_admin?(admin), do: raise("Only super admin can delete a user")
     Repo.delete(user)
   end
 
@@ -343,6 +361,50 @@ defmodule AppPlanner.Accounts do
     {encoded_token, user_token} = UserToken.build_email_token(user, "login")
     Repo.insert!(user_token)
     UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
+  end
+
+  @doc """
+  Registers a new user or finds an existing one, then delivers magic link instructions.
+  Useful for passwordless sign-up/login flow.
+  """
+  def register_or_login_with_magic_link(email, magic_link_url_fun) do
+    case get_user_by_email(email) do
+      %User{} = user ->
+        deliver_login_instructions(user, magic_link_url_fun)
+        {:ok, user}
+
+      nil ->
+        # Create a new user WITHOUT a password
+        attrs = %{
+          email: email,
+          full_name: String.split(email, "@") |> List.first()
+        }
+
+        result =
+          %User{}
+          |> User.registration_changeset(attrs, require_password: false)
+          |> Repo.insert()
+
+        case result do
+          {:ok, user} ->
+            # Default workspace and role
+            case AppPlanner.Workspaces.create_workspace(user, %{name: "My Workspace"}) do
+              {:ok, _workspace} ->
+                if Repo.aggregate(User, :count, :id) == 1 do
+                  user |> Ecto.Changeset.change(%{role: "super_admin"}) |> Repo.update!()
+                end
+
+              _ ->
+                :ok
+            end
+
+            deliver_login_instructions(user, magic_link_url_fun)
+            {:ok, user}
+
+          error ->
+            error
+        end
+    end
   end
 
   @doc """

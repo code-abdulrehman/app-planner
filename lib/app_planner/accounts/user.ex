@@ -2,6 +2,8 @@ defmodule AppPlanner.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias AppPlanner.Planner.{UserWorkspace, Task, TaskComment}
+
   schema "users" do
     field :email, :string
     field :full_name, :string
@@ -10,6 +12,11 @@ defmodule AppPlanner.Accounts.User do
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
+
+    has_many :user_workspaces, UserWorkspace
+    has_many :workspaces, through: [:user_workspaces, :workspace]
+    has_many :tasks, Task, foreign_key: :assignee_id
+    has_many :task_comments, TaskComment
 
     timestamps(type: :utc_datetime)
   end
@@ -37,15 +44,25 @@ defmodule AppPlanner.Accounts.User do
   def registration_changeset(user, attrs, opts \\ []) do
     user
     |> cast(attrs, [:email, :full_name, :password])
-    |> validate_required([:email, :password])
+    |> validate_required([:email])
     |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
       message: "must have the @ sign and no spaces"
     )
     |> validate_length(:email, max: 160)
-    |> validate_length(:password, min: 12, max: 72)
+    |> maybe_validate_password(opts)
     |> unsafe_validate_unique(:email, AppPlanner.Repo)
     |> unique_constraint(:email)
     |> maybe_hash_password(opts)
+  end
+
+  defp maybe_validate_password(changeset, opts) do
+    if Keyword.get(opts, :require_password, true) do
+      changeset
+      |> validate_required([:password])
+      |> validate_length(:password, min: 12, max: 72)
+    else
+      changeset
+    end
   end
 
   defp validate_email(changeset, opts) do

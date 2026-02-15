@@ -20,21 +20,14 @@ defmodule AppPlannerWeb.Router do
   scope "/", AppPlannerWeb do
     pipe_through(:browser)
 
-    get("/", PageController, :home)
+    live_session :home,
+      on_mount: [{AppPlannerWeb.UserAuth, :mount_current_scope}] do
+      live("/", HomeLive, :index)
+    end
   end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", AppPlannerWeb do
-  #   pipe_through :api
-  # end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:app_planner, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
@@ -51,21 +44,47 @@ defmodule AppPlannerWeb.Router do
     pipe_through([:browser, :require_authenticated_user])
 
     live_session :require_authenticated_user,
-      on_mount: [{AppPlannerWeb.UserAuth, :require_authenticated}] do
+      on_mount: [
+        {AppPlannerWeb.UserAuth, :require_authenticated},
+        {AppPlannerWeb.WorkspaceSelector, :load_current_workspace}
+      ],
+      layout: {AppPlannerWeb.Layouts, :app} do
       live("/users/settings", UserLive.Settings, :edit)
       live("/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email)
       live("/users/admin", UserLive.Admin, :index)
 
-      live("/apps", AppLive.Index, :index)
-      live("/apps/new", AppLive.Form, :new)
-      live("/apps/:id", AppLive.Show, :show)
-      live("/apps/:id/edit", AppLive.Form, :edit)
-      live("/apps/:id/export", AppLive.Export, :export)
+      live("/workspaces", WorkspaceLive.Index, :index)
+      live("/workspaces/new", WorkspaceLive.Form, :new)
+      live("/workspaces/:id", WorkspaceLive.Show, :show)
+      live("/workspaces/:id/edit", WorkspaceLive.Form, :edit)
 
-      live("/features", FeatureLive.Index, :index)
-      live("/features/new", FeatureLive.Form, :new)
-      live("/features/:id", FeatureLive.Show, :show)
-      live("/features/:id/edit", FeatureLive.Form, :edit)
+      live("/board", TaskLive.Index, :index)
+      live("/workspaces/:workspace_id/board", TaskLive.Index, :index)
+
+      scope "/workspaces/:workspace_id", as: :workspace do
+        live("/apps", AppLive.Index, :index)
+        live("/apps/new", AppLive.Form, :new)
+        live("/apps/:id", AppLive.Show, :show)
+        live("/apps/:id/edit", AppLive.Form, :edit)
+
+        live("/apps/:app_id/features/new", FeatureLive.Form, :new)
+        live("/apps/:app_id/features/:id", FeatureLive.Show, :show)
+        live("/apps/:app_id/features/:id/edit", FeatureLive.Form, :edit)
+
+        # Tasks nested under features (handled as modals on the board)
+        live("/apps/:app_id/features/:feature_id/tasks", TaskLive.Index, :index)
+        live("/apps/:app_id/features/:feature_id/tasks/add_column", TaskLive.Index, :add_column)
+
+        live(
+          "/apps/:app_id/features/:feature_id/tasks/rename_column",
+          TaskLive.Index,
+          :rename_column
+        )
+
+        live("/apps/:app_id/features/:feature_id/tasks/new", TaskLive.Index, :new_task)
+        live("/apps/:app_id/features/:feature_id/tasks/:id", TaskLive.Index, :show_task)
+        live("/apps/:app_id/features/:feature_id/tasks/:id/edit", TaskLive.Index, :edit_task)
+      end
     end
 
     post("/users/update-password", UserSessionController, :update_password)
@@ -75,11 +94,13 @@ defmodule AppPlannerWeb.Router do
     pipe_through([:browser])
 
     live_session :current_user,
-      on_mount: [{AppPlannerWeb.UserAuth, :mount_current_scope}] do
+      on_mount: [{AppPlannerWeb.UserAuth, :mount_current_scope}],
+      layout: {AppPlannerWeb.Layouts, :app} do
       live("/users/register", UserLive.Registration, :new)
       live("/users/log-in", UserLive.Login, :new)
       live("/users/log-in/:token", UserLive.Confirmation, :new)
       live("/users/forgot-password", UserLive.ForgotPassword, :new)
+      live("/invite/:token", WorkspaceLive.InvitationAccept, :accept)
     end
 
     post("/users/log-in", UserSessionController, :create)

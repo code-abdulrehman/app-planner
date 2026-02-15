@@ -60,15 +60,15 @@ defmodule AppPlannerWeb.CoreComponents do
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
+        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap break-words",
         @kind == :info && "alert-info",
         @kind == :error && "alert-error"
       ]}>
         <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
         <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
+        <div class="min-w-0">
           <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
+          <p class="whitespace-pre-wrap text-xs">{msg}</p>
         </div>
         <div class="flex-1" />
         <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
@@ -100,13 +100,19 @@ defmodule AppPlannerWeb.CoreComponents do
 
   def breadcrumb(assigns) do
     ~H"""
-    <nav class="mb-4 flex items-center gap-1.5 text-xs font-bold text-gray-400 flex-wrap" aria-label="Breadcrumb">
+    <nav
+      class="mb-4 flex items-center gap-1.5 text-xs font-bold text-gray-400 flex-wrap"
+      aria-label="Breadcrumb"
+    >
       <%= for {item, i} <- Enum.with_index(@items) do %>
         <%= if i > 0 do %>
           <span class="text-gray-300" aria-hidden="true">/</span>
         <% end %>
         <%= if item[:path] do %>
-          <.link navigate={item[:path]} class="hover:text-primary transition-colors flex items-center gap-1">
+          <.link
+            navigate={item[:path]}
+            class="hover:text-primary transition-colors flex items-center gap-1"
+          >
             <%= if i == 0 do %>
               <.icon name="hero-arrow-left" class="w-3 h-3 shrink-0" />
             <% end %>
@@ -151,16 +157,17 @@ defmodule AppPlannerWeb.CoreComponents do
       <%= if Enum.any?(@metadata) do %>
         <div class="flex flex-wrap gap-2 mb-4">
           <%= for {key, value} <- @metadata do %>
-             <div class="bg-primary/5 border border-primary/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tight">
-               <span class="text-primary/50 mr-1">{key}:</span>
-               <span class="text-primary">{value}</span>
-             </div>
+            <div class="bg-primary/5 border border-primary/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tight">
+              <span class="text-primary/50 mr-1">{key}:</span>
+              <span class="text-primary">{value}</span>
+            </div>
           <% end %>
         </div>
       <% end %>
       <div class={[
         "markdown-content text-sm leading-relaxed",
-        !@compact && "prose prose-slate max-w-none prose-p:my-0 prose-headings:mb-2 prose-headings:mt-4 first:prose-p:mt-0 last:prose-p:mb-0",
+        !@compact &&
+          "prose prose-slate max-w-none prose-p:my-0 prose-headings:mb-2 prose-headings:mt-4 first:prose-p:mt-0 last:prose-p:mb-0",
         @compact && "prose-compact"
       ]}>
         {@html}
@@ -562,7 +569,10 @@ defmodule AppPlannerWeb.CoreComponents do
 
   def icon(%{name: "hero-" <> _} = assigns) do
     ~H"""
-    <span class={[@name, @class]} style="display: inline-block; min-width: 1em; min-height: 1em; vertical-align: middle;" />
+    <span
+      class={[@name, @class]}
+      style="display: inline-block; min-width: 1em; min-height: 1em; vertical-align: middle;"
+    />
     """
   end
 
@@ -587,6 +597,105 @@ defmodule AppPlannerWeb.CoreComponents do
         {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
+  end
+
+  @doc """
+  Renders a modal.
+
+  ## Examples
+
+      <.modal id="confirm-modal">
+        This is a modal.
+      </.modal>
+
+  JS commands may be passed to the `:on_cancel` to configure
+  the closing/cancel event, for example:
+
+      <.modal id="confirm" on_cancel={JS.navigate(~p"/posts")}>
+        Is this ok?
+      </.modal>
+
+  """
+  attr(:id, :string, required: true)
+  attr(:show, :boolean, default: false)
+  attr(:on_cancel, JS, default: %JS{})
+  attr(:box_class, :string, default: "max-w-3xl")
+  slot(:inner_block, required: true)
+
+  def modal(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      phx-mounted={@show && show_modal(@id)}
+      phx-remove={hide_modal(@id)}
+      data-cancel={JS.exec(@on_cancel, "phx-remove")}
+      class="relative z-50 hidden"
+    >
+      <div
+        id={"#{@id}-bg"}
+        class="bg-base-300/50 fixed inset-0 transition-opacity backdrop-blur-sm"
+        aria-hidden="true"
+      />
+      <div
+        class="fixed inset-0 overflow-y-auto"
+        aria-labelledby={"#{@id}-title"}
+        aria-describedby={"#{@id}-description"}
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+      >
+        <div class="flex min-h-full items-center justify-center">
+          <div class={["w-full p-4 sm:p-6 lg:py-8", @box_class]}>
+            <div
+              id={"#{@id}-container"}
+              phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
+              phx-key="escape"
+              phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
+              class="relative bg-base-100 rounded-lg shadow-2xl ring-1 ring-base-200 transition"
+            >
+              <div class="absolute top-6 right-5">
+                <button
+                  phx-click={JS.exec("data-cancel", to: "##{@id}")}
+                  type="button"
+                  class="-m-3 flex-none p-3 opacity-20 hover:opacity-100"
+                  aria-label={gettext("close")}
+                >
+                  <.icon name="hero-x-mark" class="size-5" />
+                </button>
+              </div>
+              <div id={"#{@id}-content"}>
+                {render_slot(@inner_block)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  def show_modal(js \\ %JS{}, id) do
+    js
+    |> JS.show(to: "##{id}")
+    |> JS.show(
+      to: "##{id}-bg",
+      transition: {"transition-all transform ease-out duration-300", "opacity-0", "opacity-100"}
+    )
+    |> show("##{id}-container")
+    |> JS.add_class("overflow-hidden", to: "body")
+    |> JS.focus_first(to: "##{id}-container")
+  end
+
+  def hide_modal(js \\ %JS{}, id) do
+    js
+    |> JS.hide(
+      to: "##{id}-bg",
+      transition: {"transition-all transform ease-in duration-200", "opacity-100", "opacity-0"}
+    )
+    |> hide("##{id}-container")
+    |> JS.hide(to: "##{id}", transition: {"block", "block", "hidden"})
+    |> JS.remove_class("overflow-hidden", to: "body")
+    |> JS.pop_focus()
   end
 
   @doc """

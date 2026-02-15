@@ -2,74 +2,162 @@ defmodule AppPlannerWeb.UserLive.Registration do
   use AppPlannerWeb, :live_view
 
   alias AppPlanner.Accounts
-  alias AppPlanner.Accounts.User
+  alias AppPlanner.Workspaces
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-
-    <div class="mx-auto max-w-sm">
-      <div class="text-center">
-        <.header>
-          Register for an account
-          <:subtitle>
-            Already registered?
-            <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
-              Log in
-            </.link>
-            to your account now.
-          </:subtitle>
-        </.header>
+    <div class="max-w-md mx-auto py-24 px-6 text-center">
+      <div class="mb-12">
+        <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">
+           <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
+        </div>
+        <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Create Account</h1>
+        <p class="text-sm text-base-content/40 font-medium italic">
+          Already have an account?
+          <.link navigate={~p"/users/log-in"} class="text-primary hover:underline font-bold">
+            Log in
+          </.link>
+        </p>
       </div>
 
-      <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
-        <.input
-          field={@form[:full_name]}
-          type="text"
-          label="Full name"
-          placeholder="Your name"
-          autocomplete="name"
-          phx-mounted={JS.focus()}
-        />
-        <.input
-          field={@form[:email]}
-          type="email"
-          label="Email"
-          autocomplete="username"
-          required
-        />
-        <.input
-          field={@form[:password]}
-          type="password"
-          label="Password"
-          autocomplete="new-password"
-          required
-        />
+      <div class="bg-base-50/50 border border-base-200 rounded-lg p-3 w-[400px]">
+        <.form
+          for={@form}
+          id="registration_form"
+          phx-submit="save"
+          phx-change="validate"
+          class="space-y-6"
+        >
+          <div class="form-control text-left">
+            <label class="label">
+              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Full Name
+              </span>
+            </label>
+            <.input
+              field={@form[:full_name]}
+              type="text"
+              placeholder="John Doe"
+              autocomplete="name"
+              phx-mounted={JS.focus()}
+              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+            />
+          </div>
 
-        <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
-          Create an account
-        </.button>
-      </.form>
+          <div class="form-control text-left">
+            <label class="label">
+              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Email Address
+              </span>
+            </label>
+            <.input
+              field={@form[:email]}
+              type="email"
+              placeholder="name@example.com"
+              autocomplete="username"
+              required
+              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+            />
+          </div>
+
+          <div class="form-control text-left">
+            <label class="label">
+              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Password
+              </span>
+            </label>
+            <.input
+              field={@form[:password]}
+              type="password"
+              placeholder="••••••••"
+              autocomplete="new-password"
+              required
+              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+            />
+          </div>
+
+          <button
+            type="submit"
+            phx-disable-with="Creating account..."
+            class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+          >
+            Create Account
+          </button>
+        </.form>
+      </div>
     </div>
-    </Layouts.app>
     """
   end
 
   @impl true
-  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
-      when not is_nil(user) do
-    {:ok, redirect(socket, to: AppPlannerWeb.UserAuth.signed_in_path(socket))}
+  def mount(
+        %{"email" => email_param, "invite_token" => invite_token_param} = _params,
+        _session,
+        socket
+      ) do
+    if socket.assigns.current_scope.user do
+      {:ok, push_navigate(socket, to: AppPlannerWeb.UserAuth.signed_in_path(socket))}
+    else
+      changeset =
+        Accounts.User.registration_changeset(%Accounts.User{}, %{email: email_param},
+          hash_password: false
+        )
+        |> Map.put(:action, :insert)
+
+      socket =
+        socket
+        |> assign(:last_registration_params, %{email: email_param})
+        |> assign_form(changeset)
+        |> assign(:invite_token, invite_token_param)
+
+      {:ok, socket}
+    end
   end
 
   def mount(_params, _session, socket) do
-    changeset = User.registration_changeset(%User{}, %{}, hash_password: false)
-    socket =
-      socket
-      |> assign(:last_registration_params, %{})
-      |> assign_form(changeset)
+    if socket.assigns.current_scope.user do
+      {:ok, push_navigate(socket, to: AppPlannerWeb.UserAuth.signed_in_path(socket))}
+    else
+      changeset =
+        Accounts.User.registration_changeset(%Accounts.User{}, %{}, hash_password: false)
 
-    {:ok, socket}
+      socket =
+        socket
+        |> assign(:last_registration_params, %{})
+        |> assign_form(changeset)
+        |> assign(:invite_token, nil)
+
+      {:ok, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("send_magic_link", _params, socket) do
+    email = socket.assigns.form[:email].value
+
+    if email && email != "" do
+      case AppPlanner.Accounts.register_or_login_with_magic_link(
+             email,
+             &url(~p"/users/log-in/#{&1}")
+           ) do
+        {:ok, _user} ->
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             "Check your email for a secure link to complete your registration."
+           )
+           |> push_navigate(to: ~p"/users/log-in")}
+
+        {:error, _changeset} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Something went wrong. Please check your email and try again.")}
+      end
+    else
+      {:noreply, socket |> put_flash(:error, "Please enter your email address first.")}
+    end
   end
 
   @impl true
@@ -79,22 +167,46 @@ defmodule AppPlannerWeb.UserLive.Registration do
         # Auto-confirm user
         {:ok, _confirmed_user} = Accounts.confirm_user(user)
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Account created successfully! You can now log in with your email and password.")
-         |> push_navigate(to: ~p"/users/log-in")}
+        if invite_token = socket.assigns.invite_token do
+          case Workspaces.accept_invite_link(invite_token, user) do
+            {:ok, _user, workspace} ->
+              {:noreply,
+               socket
+               |> put_flash(:info, "Account created and workspace joined successfully!")
+               |> push_navigate(to: ~p"/workspaces/#{workspace.id}/board")}
+
+            {:error, reason} ->
+              {:noreply,
+               socket
+               |> put_flash(
+                 :error,
+                 "Account created, but failed to join workspace: #{inspect(reason)}. Please contact support."
+               )
+               |> push_navigate(to: ~p"/users/log-in")}
+          end
+        else
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             "Account created successfully! You can now log in with your email and password."
+           )
+           |> push_navigate(to: ~p"/users/log-in")}
+        end
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
     end
   end
 
+  @impl true
   def handle_event("validate", %{"user" => user_params}, socket) do
     previous = socket.assigns[:last_registration_params] || %{}
     merged = Map.merge(previous, user_params)
+
     changeset =
-      %User{}
-      |> User.registration_changeset(merged, hash_password: false)
+      %Accounts.User{}
+      |> Accounts.User.registration_changeset(merged, hash_password: false)
       |> Map.put(:action, :validate)
 
     {:noreply,

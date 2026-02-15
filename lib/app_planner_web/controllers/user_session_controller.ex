@@ -4,12 +4,19 @@ defmodule AppPlannerWeb.UserSessionController do
   alias AppPlanner.Accounts
   alias AppPlannerWeb.UserAuth
 
-  def create(conn, %{"_action" => "confirmed"} = params) do
-    create(conn, params, "User confirmed successfully.")
-  end
-
   def create(conn, params) do
-    create(conn, params, "Welcome back!")
+    conn =
+      if invite_token = params["invite_token"] do
+        put_session(conn, :user_return_to, ~p"/invite/#{invite_token}")
+      else
+        conn
+      end
+
+    if Map.get(params, "_action") == "confirmed" do
+      create(conn, params, "User confirmed successfully.")
+    else
+      create(conn, params, "Welcome back!")
+    end
   end
 
   # magic link login

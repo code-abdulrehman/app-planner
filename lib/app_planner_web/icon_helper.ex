@@ -326,5 +326,5 @@ defmodule AppPlannerWeb.IconHelper do
     "x-mark"
   ]
 
-  def list_icons, do: @icons
+  def icons, do: @icons
 end
