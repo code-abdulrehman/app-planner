@@ -165,11 +165,12 @@ defmodule AppPlannerWeb.AppLive.Form do
       |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 18))
       |> assign(:current_workspace, workspace)
 
+    # `live_action` isn't reliably set during the disconnected mount render.
+    # If an id is present, treat it as edit so the first render includes values.
     socket =
-      # `live_action` isn't reliably set during the disconnected mount render.
-      # If an id is present, treat it as edit so the first render includes values.
       if is_binary(params["id"]) do
         app = Planner.get_app!(params["id"], user, workspace.id)
+
         changeset =
           Planner.change_app(app, %{
             "name" => app.name,
@@ -180,7 +181,9 @@ defmodule AppPlannerWeb.AppLive.Form do
           })
 
         if Mix.env() == :dev do
-          IO.inspect(%{params: params, app: app, changeset: changeset}, label: "AppLive.Form mount/edit")
+          IO.inspect(%{params: params, app: app, changeset: changeset},
+            label: "AppLive.Form mount/edit"
+          )
         end
 
         socket
@@ -190,14 +193,15 @@ defmodule AppPlannerWeb.AppLive.Form do
         |> assign(:form, to_form(changeset))
       else
         if Mix.env() == :dev do
-          IO.inspect(%{params: params, live_action: socket.assigns.live_action}, label: "AppLive.Form mount/non-edit")
+          IO.inspect(%{params: params, live_action: socket.assigns.live_action},
+            label: "AppLive.Form mount/non-edit"
+          )
         end
 
         socket
       end
 
-    {:ok,
-     socket}
+    {:ok, socket}
   end
 
   @impl true
@@ -208,7 +212,9 @@ defmodule AppPlannerWeb.AppLive.Form do
     workspace = socket.assigns.current_workspace
 
     if Mix.env() == :dev do
-      IO.inspect(%{params: params, url: url, live_action: socket.assigns.live_action}, label: "AppLive.Form handle_params")
+      IO.inspect(%{params: params, url: url, live_action: socket.assigns.live_action},
+        label: "AppLive.Form handle_params"
+      )
     end
 
     {:noreply, apply_action(socket, socket.assigns.live_action, params, user, workspace)}
@@ -223,6 +229,7 @@ defmodule AppPlannerWeb.AppLive.Form do
 
       id ->
         app = Planner.get_app!(id, user, workspace.id)
+
         changeset =
           Planner.change_app(app, %{
             "name" => app.name,
@@ -233,7 +240,9 @@ defmodule AppPlannerWeb.AppLive.Form do
           })
 
         if Mix.env() == :dev do
-          IO.inspect(%{params: params, app: app, changeset: changeset}, label: "AppLive.Form apply_action/edit")
+          IO.inspect(%{params: params, app: app, changeset: changeset},
+            label: "AppLive.Form apply_action/edit"
+          )
         end
 
         socket

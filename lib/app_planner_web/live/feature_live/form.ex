@@ -98,7 +98,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
               class="textarea textarea-bordered w-full rounded-lg bg-base-100 font-bold leading-relaxed"
             />
           </div>
-
+          
     <!-- Icon Selection -->
           <div class="space-y-4">
             <label class="text-[10px] font-black uppercase tracking-widest text-base-content/40 px-1">
@@ -177,14 +177,15 @@ defmodule AppPlannerWeb.FeatureLive.Form do
       |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 20))
       |> assign(:current_workspace, current_workspace)
 
+    # `live_action` isn't reliably set during the disconnected mount render.
+    # If an id is present, treat it as edit so the first render includes values.
     socket =
-      # `live_action` isn't reliably set during the disconnected mount render.
-      # If an id is present, treat it as edit so the first render includes values.
       if is_binary(params["id"]) do
         feature = Planner.get_feature!(params["id"], user, current_workspace.id)
         app = Planner.get_app!(feature.app_id, user, current_workspace.id)
         feature = %{feature | app: app}
         apps = Planner.list_apps(user, current_workspace.id)
+
         changeset =
           Planner.change_feature(feature, %{
             "title" => feature.title,
@@ -208,14 +209,15 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         |> assign(:form, to_form(changeset))
       else
         if Mix.env() == :dev do
-          IO.inspect(%{params: params, live_action: socket.assigns.live_action}, label: "FeatureLive.Form mount/non-edit")
+          IO.inspect(%{params: params, live_action: socket.assigns.live_action},
+            label: "FeatureLive.Form mount/non-edit"
+          )
         end
 
         socket
       end
 
-    {:ok,
-     socket}
+    {:ok, socket}
   end
 
   @impl true
@@ -228,7 +230,9 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     apps = Planner.list_apps(user, current_workspace.id)
 
     if Mix.env() == :dev do
-      IO.inspect(%{params: params, url: url, live_action: socket.assigns.live_action}, label: "FeatureLive.Form handle_params")
+      IO.inspect(%{params: params, url: url, live_action: socket.assigns.live_action},
+        label: "FeatureLive.Form handle_params"
+      )
     end
 
     socket =
@@ -252,6 +256,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         feature = Planner.get_feature!(id, user, current_workspace.id)
         app = Planner.get_app!(feature.app_id, user, current_workspace.id)
         feature = %{feature | app: app}
+
         changeset =
           Planner.change_feature(feature, %{
             "title" => feature.title,

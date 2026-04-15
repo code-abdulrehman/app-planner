@@ -315,15 +315,13 @@ defmodule AppPlannerWeb.TaskLive.Index do
           <!-- min-w ensures content doesn't squash during transition -->
           <%= for a <- @apps_with_features do %>
             <div class="space-y-0.5">
-              <div
-                class={[
-                  "flex items-center justify-between p-2 rounded-lg transition-all group",
-                  if(to_string(a.id) == to_string(@app_id),
-                    do: "bg-primary/5 text-primary",
-                    else: "hover:bg-base-200 text-base-content/70"
-                  )
-                ]}
-              >
+              <div class={[
+                "flex items-center justify-between p-2 rounded-lg transition-all group",
+                if(to_string(a.id) == to_string(@app_id),
+                  do: "bg-primary/5 text-primary",
+                  else: "hover:bg-base-200 text-base-content/70"
+                )
+              ]}>
                 <button
                   type="button"
                   phx-click="toggle_app"
@@ -2626,7 +2624,8 @@ defmodule AppPlannerWeb.TaskLive.Index do
           |> assign(apps_with_features: apps_with_features)
 
         # If the deleted feature is the currently selected one, go back to the workspace board.
-        if socket.assigns[:feature] && to_string(feature.id) == to_string(socket.assigns.feature.id) do
+        if socket.assigns[:feature] &&
+             to_string(feature.id) == to_string(socket.assigns.feature.id) do
           {:noreply,
            socket
            |> assign(:feature, nil)
