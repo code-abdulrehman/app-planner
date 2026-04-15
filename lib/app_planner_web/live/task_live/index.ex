@@ -316,17 +316,20 @@ defmodule AppPlannerWeb.TaskLive.Index do
           <%= for a <- @apps_with_features do %>
             <div class="space-y-0.5">
               <div
-                phx-click="toggle_app"
-                phx-value-id={a.id}
                 class={[
-                  "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all group",
+                  "flex items-center justify-between p-2 rounded-lg transition-all group",
                   if(to_string(a.id) == to_string(@app_id),
                     do: "bg-primary/5 text-primary",
                     else: "hover:bg-base-200 text-base-content/70"
                   )
                 ]}
               >
-                <div class="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  phx-click="toggle_app"
+                  phx-value-id={a.id}
+                  class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer text-left"
+                >
                   <.icon
                     name={
                       if MapSet.member?(@expanded_apps, to_string(a.id)),
@@ -342,17 +345,13 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   <span class="text-[11px] font-bold text-base-content/80 truncate w-32">
                     {a.name}
                   </span>
-                </div>
+                </button>
 
-                <div
-                  class="dropdown dropdown-end"
-                  onclick="event.stopPropagation()"
-                  text-left
-                >
+                <div class="dropdown dropdown-end" text-left>
                   <button
                     tabindex="0"
+                    type="button"
                     class="btn btn-ghost btn-xs w-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onclick="event.stopPropagation()"
                   >
                     <.icon name="hero-ellipsis-horizontal" class="w-3.5 h-3.5" />
                   </button>
@@ -367,6 +366,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     </li>
                     <li>
                       <button
+                        type="button"
                         phx-click="delete_app"
                         phx-value-id={a.id}
                         data-confirm="Delete this project?"
@@ -399,11 +399,11 @@ defmodule AppPlannerWeb.TaskLive.Index do
                       <span class="truncate">{f.title}</span>
                     </.link>
 
-                    <div class="dropdown dropdown-end" onclick="event.stopPropagation()" text-left>
+                    <div class="dropdown dropdown-end" text-left>
                       <button
                         tabindex="0"
+                        type="button"
                         class="btn btn-ghost btn-xs w-4 ml-1 opacity-0 group-hover/feature:opacity-100 transition-opacity"
-                        onclick="event.stopPropagation()"
                       >
                         <.icon name="hero-ellipsis-vertical" class="w-3 h-3" />
                       </button>
@@ -420,6 +420,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                         </li>
                         <li>
                           <button
+                            type="button"
                             phx-click="delete_feature"
                             phx-value-id={f.id}
                             data-confirm="Delete this feature?"
@@ -2486,23 +2487,28 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
     case Planner.delete_app(app) do
       {:ok, _} ->
+        # Always reload sidebar so the deleted project disappears immediately.
+        apps_with_features =
+          Planner.list_apps(user, workspace_id)
+          |> Enum.map(fn a ->
+            %{a | features: Planner.list_features(user, a.id, workspace_id)}
+          end)
+
+        socket =
+          socket
+          |> put_flash(:info, "Project deleted")
+          |> assign(apps_with_features: apps_with_features)
+
+        # If the deleted project is the currently selected one, go back to the workspace board.
         if to_string(app.id) == to_string(socket.assigns.app_id) do
           {:noreply,
            socket
-           |> put_flash(:info, "Project deleted")
+           |> assign(:app_id, nil)
+           |> assign(:app, nil)
+           |> assign(:feature, nil)
            |> push_navigate(to: ~p"/workspaces/#{workspace_id}/board")}
         else
-          # Reload sidebar
-          apps_with_features =
-            Planner.list_apps(user, workspace_id)
-            |> Enum.map(fn a ->
-              %{a | features: Planner.list_features(user, a.id, workspace_id)}
-            end)
-
-          {:noreply,
-           socket
-           |> put_flash(:info, "Project deleted")
-           |> assign(apps_with_features: apps_with_features)}
+          {:noreply, socket}
         end
 
       {:error, %Ecto.Changeset{} = cs} ->
@@ -2607,23 +2613,27 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
     case Planner.delete_feature(feature) do
       {:ok, _} ->
-        if to_string(feature.id) == to_string(socket.assigns.feature.id) do
-          {:noreply,
-           socket
-           |> put_flash(:info, "Feature deleted")
-           |> push_navigate(to: ~p"/workspaces/#{workspace_id}/apps/#{feature.app_id}")}
-        else
-          # Reload sidebar
-          apps_with_features =
-            Planner.list_apps(user, workspace_id)
-            |> Enum.map(fn a ->
-              %{a | features: Planner.list_features(user, a.id, workspace_id)}
-            end)
+        # Always reload sidebar so the deleted feature disappears immediately.
+        apps_with_features =
+          Planner.list_apps(user, workspace_id)
+          |> Enum.map(fn a ->
+            %{a | features: Planner.list_features(user, a.id, workspace_id)}
+          end)
 
+        socket =
+          socket
+          |> put_flash(:info, "Feature deleted")
+          |> assign(apps_with_features: apps_with_features)
+
+        # If the deleted feature is the currently selected one, go back to the workspace board.
+        if socket.assigns[:feature] && to_string(feature.id) == to_string(socket.assigns.feature.id) do
           {:noreply,
            socket
-           |> put_flash(:info, "Feature deleted")
-           |> assign(apps_with_features: apps_with_features)}
+           |> assign(:feature, nil)
+           |> assign(:tasks_by_status, %{})
+           |> push_navigate(to: ~p"/workspaces/#{workspace_id}/board")}
+        else
+          {:noreply, socket}
         end
 
       {:error, %Ecto.Changeset{} = cs} ->

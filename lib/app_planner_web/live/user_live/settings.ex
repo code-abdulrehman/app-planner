@@ -8,86 +8,173 @@ defmodule AppPlannerWeb.UserLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="text-center">
-      <.header>
-        Account Settings
-        <:subtitle>Manage your profile, email address and password</:subtitle>
-      </.header>
+    <div class="w-full">
+      <div class="max-w-3xl mx-auto py-12 px-6">
+        <div class="mb-10">
+          <div class="flex items-center gap-2 text-[10px] font-black uppercase text-base-content/30 tracking-widest mb-2">
+            <.link navigate={~p"/workspaces"} class="hover:text-primary transition-colors">
+              Workspace
+            </.link>
+            <span>/</span>
+            <span class="text-base-content/80">Account</span>
+          </div>
+          <h1 class="text-3xl font-black text-base-content tracking-tight">Account Settings</h1>
+          <p class="text-sm text-base-content/50 font-medium mt-2 italic">
+            Manage your profile, email, and password.
+          </p>
+        </div>
+
+        <div class="space-y-6">
+          <section class="bg-base-50/50 border border-base-200 rounded-lg p-6">
+            <div class="mb-6">
+              <h2 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Profile
+              </h2>
+              <p class="text-xs text-base-content/50 font-medium mt-1">
+                Update your display name.
+              </p>
+            </div>
+
+            <.form
+              for={@profile_form}
+              id="profile_form"
+              phx-submit="update_profile"
+              phx-change="validate_profile"
+              class="space-y-4"
+            >
+              <.input
+                field={@profile_form[:full_name]}
+                type="text"
+                label="Full name"
+                placeholder="Your name"
+                autocomplete="name"
+                class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+              />
+              <div class="flex justify-end pt-2">
+                <.button
+                  variant="primary"
+                  phx-disable-with="Saving..."
+                  class="btn btn-primary rounded-lg text-[10px] font-black uppercase tracking-widest px-8 shadow-lg shadow-primary/20"
+                >
+                  Save
+                </.button>
+              </div>
+            </.form>
+          </section>
+
+          <section class="bg-base-50/50 border border-base-200 rounded-lg p-6">
+            <div class="mb-6">
+              <h2 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Email
+              </h2>
+              <p class="text-xs text-base-content/50 font-medium mt-1">
+                Change your email address (we’ll send a confirmation link).
+              </p>
+            </div>
+
+            <.form
+              for={@email_form}
+              id="email_form"
+              phx-submit="update_email"
+              phx-change="validate_email"
+              class="space-y-4"
+            >
+              <.input
+                field={@email_form[:email]}
+                type="email"
+                label="Email"
+                autocomplete="username"
+                required
+                class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+              />
+              <div class="flex justify-end pt-2">
+                <.button
+                  variant="primary"
+                  phx-disable-with="Changing..."
+                  class="btn btn-primary rounded-lg text-[10px] font-black uppercase tracking-widest px-8 shadow-lg shadow-primary/20"
+                >
+                  Change Email
+                </.button>
+              </div>
+            </.form>
+          </section>
+
+          <section class="bg-base-50/50 border border-base-200 rounded-lg p-6">
+            <div class="mb-6">
+              <h2 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                Password
+              </h2>
+              <p class="text-xs text-base-content/50 font-medium mt-1">
+                Set a new password for your account.
+              </p>
+            </div>
+
+            <.form
+              for={@password_form}
+              id="password_form"
+              action={~p"/users/update-password"}
+              method="post"
+              phx-change="validate_password"
+              phx-submit="update_password"
+              phx-trigger-action={@trigger_submit}
+              class="space-y-4"
+            >
+              <input
+                name={@password_form[:email].name}
+                type="hidden"
+                id="hidden_user_email"
+                autocomplete="username"
+                value={@current_email}
+              />
+              <.input
+                field={@password_form[:password]}
+                type="password"
+                label="New password"
+                autocomplete="new-password"
+                required
+                class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+              />
+              <.input
+                field={@password_form[:password_confirmation]}
+                type="password"
+                label="Confirm new password"
+                autocomplete="new-password"
+                class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+              />
+              <div class="flex justify-end pt-2">
+                <.button
+                  variant="primary"
+                  phx-disable-with="Saving..."
+                  class="btn btn-primary rounded-lg text-[10px] font-black uppercase tracking-widest px-8 shadow-lg shadow-primary/20"
+                >
+                  Save Password
+                </.button>
+              </div>
+            </.form>
+          </section>
+
+          <section class="bg-base-50/50 border border-base-200 rounded-lg p-6">
+            <div class="flex items-center justify-between gap-6">
+              <div>
+                <h2 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                  Quick login
+                </h2>
+                <p class="text-xs text-base-content/50 font-medium mt-1">
+                  Send a login link to your email.
+                </p>
+              </div>
+              <button
+                type="button"
+                phx-click="send_login_link"
+                class="btn btn-ghost rounded-lg text-[10px] font-black uppercase tracking-widest border border-base-200 px-6"
+              >
+                Send me a login link
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
-
-    <.form
-      for={@profile_form}
-      id="profile_form"
-      phx-submit="update_profile"
-      phx-change="validate_profile"
-    >
-      <.input
-        field={@profile_form[:full_name]}
-        type="text"
-        label="Full name"
-        placeholder="Your name"
-        autocomplete="name"
-      />
-      <.button variant="primary" phx-disable-with="Saving...">Save name</.button>
-    </.form>
-
-    <div class="divider" />
-
-    <.form for={@email_form} id="email_form" phx-submit="update_email" phx-change="validate_email">
-      <.input
-        field={@email_form[:email]}
-        type="email"
-        label="Email"
-        autocomplete="username"
-        required
-      />
-      <.button variant="primary" phx-disable-with="Changing...">Change Email</.button>
-    </.form>
-
-    <div class="divider" />
-
-    <.form
-      for={@password_form}
-      id="password_form"
-      action={~p"/users/update-password"}
-      method="post"
-      phx-change="validate_password"
-      phx-submit="update_password"
-      phx-trigger-action={@trigger_submit}
-    >
-      <input
-        name={@password_form[:email].name}
-        type="hidden"
-        id="hidden_user_email"
-        autocomplete="username"
-        value={@current_email}
-      />
-      <.input
-        field={@password_form[:password]}
-        type="password"
-        label="New password"
-        autocomplete="new-password"
-        required
-      />
-      <.input
-        field={@password_form[:password_confirmation]}
-        type="password"
-        label="Confirm new password"
-        autocomplete="new-password"
-      />
-      <.button variant="primary" phx-disable-with="Saving...">
-        Save Password
-      </.button>
-    </.form>
-
-    <div class="divider" />
-
-    <p class="text-sm text-base-content/70">
-      Forgot your password? We'll send a login link to your email.
-    </p>
-    <button type="button" phx-click="send_login_link" class="btn btn-ghost btn-sm mt-2">
-      Send me a login link
-    </button>
     """
   end
 
