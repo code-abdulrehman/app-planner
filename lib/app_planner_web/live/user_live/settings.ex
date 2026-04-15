@@ -8,81 +8,86 @@ defmodule AppPlannerWeb.UserLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-      <div class="text-center">
-        <.header>
-          Account Settings
-          <:subtitle>Manage your profile, email address and password</:subtitle>
-        </.header>
-      </div>
+    <div class="text-center">
+      <.header>
+        Account Settings
+        <:subtitle>Manage your profile, email address and password</:subtitle>
+      </.header>
+    </div>
 
-      <.form for={@profile_form} id="profile_form" phx-submit="update_profile" phx-change="validate_profile">
-        <.input
-          field={@profile_form[:full_name]}
-          type="text"
-          label="Full name"
-          placeholder="Your name"
-          autocomplete="name"
-        />
-        <.button variant="primary" phx-disable-with="Saving...">Save name</.button>
-      </.form>
+    <.form
+      for={@profile_form}
+      id="profile_form"
+      phx-submit="update_profile"
+      phx-change="validate_profile"
+    >
+      <.input
+        field={@profile_form[:full_name]}
+        type="text"
+        label="Full name"
+        placeholder="Your name"
+        autocomplete="name"
+      />
+      <.button variant="primary" phx-disable-with="Saving...">Save name</.button>
+    </.form>
 
-      <div class="divider" />
+    <div class="divider" />
 
-      <.form for={@email_form} id="email_form" phx-submit="update_email" phx-change="validate_email">
-        <.input
-          field={@email_form[:email]}
-          type="email"
-          label="Email"
-          autocomplete="username"
-          required
-        />
-        <.button variant="primary" phx-disable-with="Changing...">Change Email</.button>
-      </.form>
+    <.form for={@email_form} id="email_form" phx-submit="update_email" phx-change="validate_email">
+      <.input
+        field={@email_form[:email]}
+        type="email"
+        label="Email"
+        autocomplete="username"
+        required
+      />
+      <.button variant="primary" phx-disable-with="Changing...">Change Email</.button>
+    </.form>
 
-      <div class="divider" />
+    <div class="divider" />
 
-      <.form
-        for={@password_form}
-        id="password_form"
-        action={~p"/users/update-password"}
-        method="post"
-        phx-change="validate_password"
-        phx-submit="update_password"
-        phx-trigger-action={@trigger_submit}
-      >
-        <input
-          name={@password_form[:email].name}
-          type="hidden"
-          id="hidden_user_email"
-          autocomplete="username"
-          value={@current_email}
-        />
-        <.input
-          field={@password_form[:password]}
-          type="password"
-          label="New password"
-          autocomplete="new-password"
-          required
-        />
-        <.input
-          field={@password_form[:password_confirmation]}
-          type="password"
-          label="Confirm new password"
-          autocomplete="new-password"
-        />
-        <.button variant="primary" phx-disable-with="Saving...">
-          Save Password
-        </.button>
-      </.form>
+    <.form
+      for={@password_form}
+      id="password_form"
+      action={~p"/users/update-password"}
+      method="post"
+      phx-change="validate_password"
+      phx-submit="update_password"
+      phx-trigger-action={@trigger_submit}
+    >
+      <input
+        name={@password_form[:email].name}
+        type="hidden"
+        id="hidden_user_email"
+        autocomplete="username"
+        value={@current_email}
+      />
+      <.input
+        field={@password_form[:password]}
+        type="password"
+        label="New password"
+        autocomplete="new-password"
+        required
+      />
+      <.input
+        field={@password_form[:password_confirmation]}
+        type="password"
+        label="Confirm new password"
+        autocomplete="new-password"
+      />
+      <.button variant="primary" phx-disable-with="Saving...">
+        Save Password
+      </.button>
+    </.form>
 
-      <div class="divider" />
+    <div class="divider" />
 
-      <p class="text-sm text-base-content/70">
-        Forgot your password? We'll send a login link to your email.
-      </p>
-      <button type="button" phx-click="send_login_link" class="btn btn-ghost btn-sm mt-2">
-        Send me a login link
-      </button>
+    <p class="text-sm text-base-content/70">
+      Forgot your password? We'll send a login link to your email.
+    </p>
+    <button type="button" phx-click="send_login_link" class="btn btn-ghost btn-sm mt-2">
+      Send me a login link
+    </button>
     """
   end
 

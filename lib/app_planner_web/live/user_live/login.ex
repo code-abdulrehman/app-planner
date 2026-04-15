@@ -4,93 +4,103 @@ defmodule AppPlannerWeb.UserLive.Login do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="max-w-md mx-auto py-24 px-6 text-center">
-      <div class="mb-12">
-        <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">
-           <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
+    <div class="max-w-md mx-auto py-24 px-6">
+      <div class="text-center mb-10">
+        <div class="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-primary-content shadow-lg shadow-primary/20 mx-auto mb-5">
+          <.icon name="hero-cursor-arrow-ripple" class="w-5 h-5" />
         </div>
-        <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Welcome Back</h1>
-        <p class="text-sm text-base-content/40 font-medium italic">
-          Don't have an account?
+
+        <h1 class="text-3xl font-black tracking-tight text-base-content">Log in</h1>
+
+        <p class="mt-2 text-sm text-base-content/60 font-medium">
+          Don’t have an account?
           <.link navigate={~p"/users/register"} class="text-primary hover:underline font-bold">
             Register
           </.link>
         </p>
       </div>
 
-      <div class="bg-base-50/50 border border-base-200 rounded-lg p-3 w-[400px]">
+      <div class="bg-base-50/50 border border-base-200 rounded-xl p-6 space-y-5 w-[400px]">
+        <p class="text-[10px] font-black uppercase tracking-widest text-base-content/40 text-left">
+          Log in with email
+        </p>
+
         <.form
-          for={@form}
-          id="login_form"
+          for={@password_form}
+          id="login_form_password"
           action={
             if @invite_token,
               do: ~p"/users/log-in?invite_token=#{@invite_token}",
               else: ~p"/users/log-in"
           }
-          phx-change="validate"
-          phx-submit="submit"
+          phx-submit="submit_password"
           phx-trigger-action={@trigger_submit}
-          class="space-y-6"
+          class="space-y-4"
         >
-          <div class="form-control text-left">
-            <label class="label">
-              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Email Address
-              </span>
-            </label>
-            <.input
-              field={@form[:email]}
-              type="email"
-              placeholder="name@example.com"
-              required
-              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
-              autocomplete="username"
-            />
-          </div>
+          <.input
+            field={@password_form[:email]}
+            id="login_form_password_email"
+            type="email"
+            label="Email"
+            required
+            autocomplete="username"
+          />
 
-          <div class="form-control text-left">
-            <label class="label">
-              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Password
-              </span>
-            </label>
+          <div
+            class="relative"
+            id="login-password-toggle"
+            phx-hook="PasswordToggle"
+            data-password-toggle-input="#login_form_password_password"
+            data-password-toggle-button="#login-password-toggle-btn"
+          >
             <.input
-              field={@form[:password]}
+              field={@password_form[:password]}
+              id="login_form_password_password"
               type="password"
-              placeholder="••••••••"
+              label="Password"
               required
-              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
               autocomplete="current-password"
             />
+
+            <button
+              type="button"
+              id="login-password-toggle-btn"
+              class="absolute right-3 top-9 text-base-content/50 hover:text-base-content/80 transition-colors"
+              aria-label="Show password"
+            >
+              <span data-password-icon="show">
+                <.icon name="hero-eye" class="w-4 h-4" />
+              </span>
+              <span data-password-icon="hide" class="hidden">
+                <.icon name="hero-eye-slash" class="w-4 h-4" />
+              </span>
+            </button>
           </div>
 
-        <!--  <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name={@form[:remember_me].name}
-                value="true"
-                class="checkbox checkbox-primary checkbox-xs rounded"
-              />
-              <span class="text-[10px] font-black uppercase text-base-content/40 tracking-widest">
-                Stay logged in
-              </span>
-            </div>
-            <.link
-              navigate={~p"/users/forgot-password"}
-              class="text-[10px] font-black uppercase text-primary tracking-widest hover:underline"
-            >
-              Reset Password
-            </.link>
-          </div> -->
+          <label class="flex items-center gap-2 text-sm text-base-content/70 select-none">
+            <input
+              type="checkbox"
+              name={@password_form[:remember_me].name}
+              value="true"
+              checked={@remember_me}
+              phx-click="toggle_remember_me"
+              class="h-4 w-4 rounded border-base-300 text-primary focus:ring-primary"
+            /> Remember me
+          </label>
 
-          <button
-            type="submit"
-            class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
-          >
+          <button class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
             Log In
           </button>
         </.form>
+
+        <div class="text-center">
+          <.link
+            navigate={~p"/users/forgot-password"}
+            class="text-[10px] font-black uppercase text-primary tracking-widest hover:underline"
+          >
+            Forgot your password?
+          </.link>
+        </div>
       </div>
     </div>
     """
@@ -100,52 +110,47 @@ defmodule AppPlannerWeb.UserLive.Login do
   def mount(params, _session, socket) do
     email = params["email"] || Phoenix.Flash.get(socket.assigns.flash, :email)
     invite_token = params["invite_token"]
-    form = to_form(%{"email" => email}, as: "user")
-    {:ok, assign(socket, form: form, trigger_submit: false, invite_token: invite_token)}
+
+    password_form =
+      to_form(%{"email" => email, "remember_me" => "true"}, as: "user")
+
+    {:ok,
+     assign(socket,
+       password_form: password_form,
+       trigger_submit: false,
+       invite_token: invite_token,
+       remember_me: true
+     )}
   end
 
   @impl true
-  def handle_event("validate", %{"user" => params}, socket) do
-    {:noreply, assign(socket, form: to_form(params, as: "user"))}
+  def handle_event("submit_password", %{"user" => params}, socket) do
+    socket =
+      socket
+      |> assign(:password_form, to_form(params, as: "user"))
+      |> assign(:trigger_submit, true)
+
+    {:noreply, socket}
   end
 
   @impl true
-  def handle_event("submit", %{"user" => _params}, socket) do
-    # For password login, we need to pass the invite_token to the controller
-    # This might require adding a hidden field to the form
-    {:noreply, assign(socket, :trigger_submit, true)}
+  def handle_event("toggle_remember_me", _params, socket) do
+    socket =
+      socket
+      |> update(:remember_me, &(!&1))
+      |> assign(
+        :password_form,
+        toggle_remember_me_in_form(socket.assigns.password_form, socket.assigns.remember_me)
+      )
+
+    {:noreply, socket}
   end
 
-  @impl true
-  def handle_event("send_magic_link", _params, socket) do
-    email = socket.assigns.form[:email].value
-    invite_token = socket.assigns.invite_token
+  defp toggle_remember_me_in_form(form, remember_me) do
+    params =
+      form.params
+      |> Map.put("remember_me", if(remember_me, do: "true", else: "false"))
 
-    if email && email != "" do
-      # If we have an invite_token, we want to redirect to /invite/:token after login
-      # We can't easily pass 'return_to' through magic links without building it into the token context
-      # But we can append it as a param to the confirmation URL
-      magic_link_url =
-        if invite_token do
-          &url(~p"/users/log-in/#{&1}?invite_token=#{invite_token}")
-        else
-          &url(~p"/users/log-in/#{&1}")
-        end
-
-      case AppPlanner.Accounts.register_or_login_with_magic_link(email, magic_link_url) do
-        {:ok, _user} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, "Check your email for a secure login link.")
-           |> push_navigate(to: ~p"/users/log-in")}
-
-        {:error, _changeset} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Something went wrong. Please check your email and try again.")}
-      end
-    else
-      {:noreply, socket |> put_flash(:error, "Please enter your email address first.")}
-    end
+    to_form(params, as: "user")
   end
 end

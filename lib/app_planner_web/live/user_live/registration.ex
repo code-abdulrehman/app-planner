@@ -10,9 +10,9 @@ defmodule AppPlannerWeb.UserLive.Registration do
     <div class="max-w-md mx-auto py-24 px-6 text-center">
       <div class="mb-12">
         <div class="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-primary-content font-black text-2xl shadow-lg shadow-primary/20 mx-auto mb-6">
-           <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
+          <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
         </div>
-        <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Create Account</h1>
+        <h1 class="text-3xl font-black tracking-tight text-base-content mb-2">Register</h1>
         <p class="text-sm text-base-content/40 font-medium italic">
           Already have an account?
           <.link navigate={~p"/users/log-in"} class="text-primary hover:underline font-bold">
@@ -27,54 +27,60 @@ defmodule AppPlannerWeb.UserLive.Registration do
           id="registration_form"
           phx-submit="save"
           phx-change="validate"
+          phx-debounce="blur"
           class="space-y-6"
         >
-          <div class="form-control text-left">
-            <label class="label">
-              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Full Name
-              </span>
-            </label>
+          <div class="form-control text-left space-y-4">
             <.input
               field={@form[:full_name]}
               type="text"
+              label="Full name"
               placeholder="John Doe"
               autocomplete="name"
-              phx-mounted={JS.focus()}
-              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+              id="registration_form_full_name"
             />
-          </div>
 
-          <div class="form-control text-left">
-            <label class="label">
-              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Email Address
-              </span>
-            </label>
             <.input
               field={@form[:email]}
               type="email"
+              label="Email"
               placeholder="name@example.com"
               autocomplete="username"
               required
-              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+              id="registration_form_email"
             />
-          </div>
 
-          <div class="form-control text-left">
-            <label class="label">
-              <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Password
-              </span>
-            </label>
-            <.input
-              field={@form[:password]}
-              type="password"
-              placeholder="••••••••"
-              autocomplete="new-password"
-              required
-              class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
-            />
+            <div
+              class="relative"
+              id="registration-password-toggle"
+              phx-hook="PasswordToggle"
+              data-password-toggle-input="#registration_form_password"
+              data-password-toggle-button="#registration-password-toggle-btn"
+            >
+              <.input
+                field={@form[:password]}
+                type="password"
+                label="Password"
+                placeholder="••••••••"
+                autocomplete="new-password"
+                required
+                id="registration_form_password"
+              />
+
+              <button
+                type="button"
+                id="registration-password-toggle-btn"
+                class="absolute right-3 top-9 text-base-content/50 hover:text-base-content/80 transition-colors"
+                aria-label="Show password"
+              >
+                <span data-password-icon="show">
+                  <.icon name="hero-eye" class="w-4 h-4" />
+                </span>
+                <span data-password-icon="hide" class="hidden">
+                  <.icon name="hero-eye-slash" class="w-4 h-4" />
+                </span>
+              </button>
+            </div>
           </div>
 
           <button
@@ -82,7 +88,7 @@ defmodule AppPlannerWeb.UserLive.Registration do
             phx-disable-with="Creating account..."
             class="btn btn-primary w-full rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
           >
-            Create Account
+            Register
           </button>
         </.form>
       </div>
@@ -107,7 +113,7 @@ defmodule AppPlannerWeb.UserLive.Registration do
 
       socket =
         socket
-        |> assign(:last_registration_params, %{email: email_param})
+        |> assign(:last_registration_params, %{"email" => email_param})
         |> assign_form(changeset)
         |> assign(:invite_token, invite_token_param)
 
@@ -129,34 +135,6 @@ defmodule AppPlannerWeb.UserLive.Registration do
         |> assign(:invite_token, nil)
 
       {:ok, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("send_magic_link", _params, socket) do
-    email = socket.assigns.form[:email].value
-
-    if email && email != "" do
-      case AppPlanner.Accounts.register_or_login_with_magic_link(
-             email,
-             &url(~p"/users/log-in/#{&1}")
-           ) do
-        {:ok, _user} ->
-          {:noreply,
-           socket
-           |> put_flash(
-             :info,
-             "Check your email for a secure link to complete your registration."
-           )
-           |> push_navigate(to: ~p"/users/log-in")}
-
-        {:error, _changeset} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Something went wrong. Please check your email and try again.")}
-      end
-    else
-      {:noreply, socket |> put_flash(:error, "Please enter your email address first.")}
     end
   end
 
@@ -201,7 +179,10 @@ defmodule AppPlannerWeb.UserLive.Registration do
 
   @impl true
   def handle_event("validate", %{"user" => user_params}, socket) do
-    previous = socket.assigns[:last_registration_params] || %{}
+    previous =
+      socket.assigns[:last_registration_params]
+      |> normalize_string_keys()
+
     merged = Map.merge(previous, user_params)
 
     changeset =
@@ -213,6 +194,12 @@ defmodule AppPlannerWeb.UserLive.Registration do
      socket
      |> assign(:last_registration_params, merged)
      |> assign_form(changeset)}
+  end
+
+  defp normalize_string_keys(nil), do: %{}
+
+  defp normalize_string_keys(map) when is_map(map) do
+    Map.new(map, fn {k, v} -> {to_string(k), v} end)
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do

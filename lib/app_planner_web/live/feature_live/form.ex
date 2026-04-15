@@ -278,6 +278,6 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   defp return_path(_, feature, current_workspace) do
     if feature.app_id,
       do: ~p"/workspaces/#{current_workspace.id}/apps/#{feature.app_id}",
-      else: ~p"/workspaces/#{current_workspace.id}/apps"
+      else: ~p"/workspaces/#{current_workspace.id}"
   end
 end

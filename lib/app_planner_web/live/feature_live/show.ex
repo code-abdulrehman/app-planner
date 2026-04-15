@@ -240,7 +240,7 @@ defmodule AppPlannerWeb.FeatureLive.Show do
     app_name = if feature.app, do: feature.app.name, else: "Project"
 
     [
-      %{label: "Apps", path: ~p"/workspaces/#{current_workspace.id}/apps"},
+      %{label: "Workspace", path: ~p"/workspaces/#{current_workspace.id}"},
       %{label: app_name, path: ~p"/workspaces/#{current_workspace.id}/apps/#{feature.app_id}"},
       %{label: feature.title, path: nil}
     ]

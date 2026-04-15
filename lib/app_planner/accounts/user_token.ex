@@ -3,7 +3,6 @@ defmodule AppPlanner.Accounts.UserToken do
   import Ecto.Query
   alias AppPlanner.Accounts.UserToken
 
-
   @hash_algorithm :sha256
   @rand_size 32
 
@@ -160,7 +159,11 @@ defmodule AppPlanner.Accounts.UserToken do
   @doc """
   Builds a token for inviting a user to a workspace.
   """
-  def build_workspace_invite_token(%AppPlanner.Accounts.User{} = user, %AppPlanner.Planner.Workspace{} = workspace, invited_email) do
+  def build_workspace_invite_token(
+        %AppPlanner.Accounts.User{} = user,
+        %AppPlanner.Planner.Workspace{} = workspace,
+        invited_email
+      ) do
     token = :crypto.strong_rand_bytes(@rand_size)
     hashed_token = :crypto.hash(@hash_algorithm, token)
 
@@ -168,8 +171,10 @@ defmodule AppPlanner.Accounts.UserToken do
      %UserToken{
        token: hashed_token,
        context: "workspace_invite",
-       sent_to: invited_email, # This will be the email of the person being invited
-       user_id: user.id, # The user who sent the invite
+       # This will be the email of the person being invited
+       sent_to: invited_email,
+       # The user who sent the invite
+       user_id: user.id,
        workspace_id: workspace.id,
        invited_email: invited_email
      }}
@@ -185,9 +190,11 @@ defmodule AppPlanner.Accounts.UserToken do
 
         query =
           from token in by_token_and_context_query(hashed_token, "workspace_invite"),
-            left_join: user in assoc(token, :user), # The inviter
+            # The inviter
+            left_join: user in assoc(token, :user),
             left_join: workspace in assoc(token, :workspace),
-            where: token.inserted_at > ago(^@magic_link_validity_in_minutes, "minute"), # Using magic link validity
+            # Using magic link validity
+            where: token.inserted_at > ago(^@magic_link_validity_in_minutes, "minute"),
             select: %{token | user: user, workspace: workspace}
 
         {:ok, query}

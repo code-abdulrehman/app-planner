@@ -31,6 +31,9 @@ defmodule AppPlanner.Planner.App do
       :status_config
     ])
     |> validate_required([:name, :description, :status, :workspace_id])
-    |> validate_inclusion(:status, ~w(Idea Planned In Progress Completed Archived))
+    |> validate_inclusion(
+      :status,
+      ["Idea", "Planned", "In Progress", "Completed", "Archived"]
+    )
   end
 end

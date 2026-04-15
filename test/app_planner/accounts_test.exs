@@ -77,13 +77,10 @@ defmodule AppPlanner.AccountsTest do
       assert "has already been taken" in errors_on(changeset).email
     end
 
-    test "registers users without password" do
+    test "register_user/1 requires password" do
       email = unique_user_email()
-      {:ok, user} = Accounts.register_user(valid_user_attributes(email: email))
-      assert user.email == email
-      assert is_nil(user.hashed_password)
-      assert is_nil(user.confirmed_at)
-      assert is_nil(user.password)
+      assert {:error, changeset} = Accounts.register_user(valid_user_attributes(email: email))
+      assert %{password: ["can't be blank"]} = errors_on(changeset)
     end
   end
 

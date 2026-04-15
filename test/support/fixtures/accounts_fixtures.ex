@@ -14,15 +14,29 @@ defmodule AppPlanner.AccountsFixtures do
 
   def valid_user_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{
-      email: unique_user_email()
+      email: unique_user_email(),
+      full_name: "Test User"
     })
   end
 
   def unconfirmed_user_fixture(attrs \\ %{}) do
+    attrs = valid_user_attributes(attrs)
+
     {:ok, user} =
-      attrs
-      |> valid_user_attributes()
-      |> Accounts.register_user()
+      if Map.has_key?(attrs, :password) or Map.has_key?(attrs, "password") do
+        Accounts.register_user(attrs)
+      else
+        %Accounts.User{}
+        |> Accounts.User.registration_changeset(attrs, require_password: false)
+        |> AppPlanner.Repo.insert()
+      end
+
+    # Keep parity with production flow: ensure new users have a default workspace.
+    _ =
+      case AppPlanner.Workspaces.create_workspace(user, %{name: "My Workspace"}) do
+        {:ok, _workspace} -> :ok
+        _ -> :ok
+      end
 
     user
   end

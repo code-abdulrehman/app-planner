@@ -13,7 +13,7 @@ defmodule AppPlannerWeb.AppLive.Form do
         <div>
           <div class="flex items-center gap-2 text-[10px] font-black uppercase text-base-content/30 tracking-widest mb-2">
             <.link
-              navigate={~p"/workspaces/#{@current_workspace.id}/apps"}
+              navigate={~p"/workspaces/#{@current_workspace.id}"}
               class="hover:text-primary transition-colors"
             >
               Projects
@@ -246,6 +246,6 @@ defmodule AppPlannerWeb.AppLive.Form do
   defp return_path(app, workspace) do
     if app.id,
       do: ~p"/workspaces/#{workspace.id}/apps/#{app.id}",
-      else: ~p"/workspaces/#{workspace.id}/apps"
+      else: ~p"/workspaces/#{workspace.id}"
   end
 end

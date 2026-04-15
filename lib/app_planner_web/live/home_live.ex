@@ -158,7 +158,7 @@ defmodule AppPlannerWeb.HomeLive do
               <.link href={~p"/"} class="hover:text-base-content transition-colors">Home</.link>
               <%= if @current_scope && @current_scope.user && @current_workspace do %>
                 <.link
-                  href={~p"/workspaces/#{@current_workspace.id}/apps"}
+                  href={~p"/workspaces/#{@current_workspace.id}"}
                   class="hover:text-base-content transition-colors"
                 >
                   Projects

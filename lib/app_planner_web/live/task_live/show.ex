@@ -192,7 +192,7 @@ defmodule AppPlannerWeb.TaskLive.Show do
           </section>
 
           <div class="divider opacity-10"></div>
-
+          
     <!-- Discussion -->
           <section class="space-y-8">
             <div class="flex items-center gap-3">

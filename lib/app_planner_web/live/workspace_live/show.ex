@@ -13,7 +13,15 @@ defmodule AppPlannerWeb.WorkspaceLive.Show do
   end
 
   @impl true
-  def handle_params(%{"id" => id}, _url, socket) do
+  def handle_params(%{"id" => id} = params, _url, socket) do
+    if params["new_app"] == "true" do
+      {:noreply, push_navigate(socket, to: ~p"/workspaces/#{id}/apps/new")}
+    else
+      load_workspace_show(socket, id)
+    end
+  end
+
+  defp load_workspace_show(socket, id) do
     current_user = socket.assigns.current_scope.user
     workspace = Workspaces.get_workspace!(id)
 
@@ -199,36 +207,73 @@ defmodule AppPlannerWeb.WorkspaceLive.Show do
                 </.link>
               </div>
             <% else %>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <%= for app <- @apps do %>
                   <.link
                     navigate={~p"/workspaces/#{@workspace.id}/board?app_id=#{app.id}"}
-                    class="group bg-base-200 p-6 rounded-xl border border-base-50 hover:border-primary hover:shadow-xl hover:shadow-primary/5 transition-all"
+                    class={[
+                      "group relative block overflow-hidden rounded-xl border border-base-200 bg-base-100 p-6",
+                      "cursor-pointer transition-all duration-500 hover:border-primary hover:shadow-md"
+                    ]}
                   >
-                    <div class="flex items-center gap-4 mb-4">
-                      <div class="w-12 h-12 rounded-lg bg-base-50 border border-base-200 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all">
+                    <div class="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/5 blur-3xl transition-colors group-hover:bg-primary/10">
+                    </div>
+
+                    <div class="relative mb-6 flex items-start justify-between">
+                      <div class="rounded-xl bg-primary/5 p-4 text-primary shadow-inner transition-all duration-500 group-hover:bg-primary group-hover:text-white">
                         <.icon
                           name={if app.icon, do: "hero-#{app.icon}", else: "hero-cube"}
-                          class="w-6 h-6"
+                          class="h-7 w-7"
                         />
                       </div>
-                      <div class="flex-1 min-w-0">
-                        <h4 class="text-lg font-black tracking-tight group-hover:text-primary transition-colors truncate">
-                          {app.name}
-                        </h4>
-                        <p class="text-[9px] font-black uppercase text-base-content/20 tracking-widest">
-                          Architectural Draft
-                        </p>
+                      <.icon
+                        name="hero-arrow-top-right-on-square"
+                        class="h-4 w-4 text-base-content/15 transition-all group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                      />
+                    </div>
+
+                    <div class="relative mb-6 space-y-2">
+                      <h3 class="line-clamp-1 text-xl font-black tracking-tight text-base-content transition-colors group-hover:text-primary">
+                        {app.name}
+                      </h3>
+                      <p class="line-clamp-2 h-10 text-sm font-bold italic leading-relaxed tracking-tight text-base-content/40">
+                        {app.description ||
+                          "Experimental project roadmap without abstract description."}
+                      </p>
+                    </div>
+
+                    <div class="relative flex items-center gap-3 border-t border-base-200 pt-4">
+                      <div class="flex flex-col">
+                        <span class="mb-1 text-[9px] font-black uppercase tracking-widest text-base-content/20">
+                          Status
+                        </span>
+                        <span class="rounded-lg border border-base-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                          {app.status}
+                        </span>
                       </div>
                     </div>
-                    <div class="flex items-center justify-between pt-4 border-t border-base-50">
-                      <span class="text-[9px] font-black uppercase tracking-widest text-base-content/30 italic">
-                        Active Scope
-                      </span>
-                      <.icon
-                        name="hero-arrow-right"
-                        class="w-3.5 h-3.5 text-base-content/10 group-hover:text-primary group-hover:translate-x-1 transition-all"
-                      />
+
+                    <div class="relative -mx-6 -mb-6 mt-6 flex items-center justify-between border-t border-base-200 bg-base-50/50 p-5">
+                      <div class="flex min-w-0 items-center gap-3">
+                        <div
+                          :if={app.user}
+                          class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-base-200 bg-base-100 text-[10px] font-black text-base-content shadow-sm"
+                          title={app.user.email}
+                        >
+                          {String.at(app.user.email, 0) |> String.upcase()}
+                        </div>
+                        <div class="min-w-0 flex flex-col">
+                          <span class="text-[9px] font-black uppercase text-base-content/40">
+                            Owner
+                          </span>
+                          <span class="w-28 truncate text-[10px] font-bold lowercase italic text-base-content/60">
+                            @{app.user && String.split(app.user.email, "@") |> List.first()}
+                          </span>
+                        </div>
+                      </div>
+                      <div class="flex flex-shrink-0 items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary transition-transform group-hover:translate-x-1">
+                        Board <.icon name="hero-chevron-right" class="h-3.5 w-3.5" />
+                      </div>
                     </div>
                   </.link>
                 <% end %>

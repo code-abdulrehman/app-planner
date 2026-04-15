@@ -22,12 +22,12 @@ import "phoenix_html"
 // Establish Phoenix Socket and LiveView configuration.
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
-import { hooks as colocatedHooks } from "phoenix-colocated/app_planner"
 import topbar from "../vendor/topbar"
 
 import SortableHook from "./hooks/sortable"
 import SortableColumnsHook from "./hooks/sortable_columns"
 import AutoSubmitOnBlur from "./hooks/auto_submit_on_blur"
+import PasswordToggle from "./hooks/password_toggle"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -37,7 +37,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     Sortable: SortableHook,
     SortableColumns: SortableColumnsHook,
     AutoSubmitOnBlur: AutoSubmitOnBlur,
-    ...colocatedHooks
+    PasswordToggle: PasswordToggle,
   },
 })
 

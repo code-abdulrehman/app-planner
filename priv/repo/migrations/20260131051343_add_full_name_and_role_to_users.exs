@@ -9,9 +9,9 @@ defmodule AppPlanner.Repo.Migrations.AddFullNameAndRoleToUsers do
 
     # First user (lowest id) becomes super_admin; others stay user
     execute """
-    UPDATE users SET role = 'super_admin'
-    WHERE id = (SELECT id FROM users ORDER BY id ASC LIMIT 1)
-    """,
-    ""
+            UPDATE users SET role = 'super_admin'
+            WHERE id = (SELECT id FROM users ORDER BY id ASC LIMIT 1)
+            """,
+            ""
   end
 end

@@ -14,7 +14,8 @@ defmodule AppPlanner.Repo.Migrations.CreateWorkspacesAndAddToApps do
     create table(:user_workspaces) do
       add :user_id, references(:users, on_delete: :delete_all), null: false
       add :workspace_id, references(:workspaces, on_delete: :delete_all), null: false
-      add :role, :string, null: false, default: "member" # owner, editor, viewer
+      # owner, editor, viewer
+      add :role, :string, null: false, default: "member"
 
       timestamps()
     end

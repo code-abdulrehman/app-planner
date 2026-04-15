@@ -113,7 +113,7 @@ defmodule AppPlannerWeb.FeatureLive.Index do
        socket
        |> put_flash(:error, "This project is no longer available.")
        # Corrected routing
-       |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
+       |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}")}
     else
       features =
         if app do

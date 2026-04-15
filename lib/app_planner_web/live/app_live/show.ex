@@ -15,7 +15,7 @@ defmodule AppPlannerWeb.AppLive.Show do
         </.link>
         <span>/</span>
         <.link
-          navigate={~p"/workspaces/#{@current_workspace.id}/apps"}
+          navigate={~p"/workspaces/#{@current_workspace.id}"}
           class="hover:text-primary transition-colors"
         >
           Projects
@@ -243,7 +243,7 @@ defmodule AppPlannerWeb.AppLive.Show do
           {:ok,
            socket
            |> put_flash(:error, "App not found.")
-           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
+           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}")}
 
         app ->
           can_edit = Workspaces.can_edit?(user, current_workspace) || Accounts.super_admin?(user)
@@ -268,7 +268,7 @@ defmodule AppPlannerWeb.AppLive.Show do
         {:noreply,
          socket
          |> put_flash(:info, "Project deleted")
-         |> push_navigate(to: ~p"/workspaces/#{socket.assigns.current_workspace.id}/apps")}
+         |> push_navigate(to: ~p"/workspaces/#{socket.assigns.current_workspace.id}")}
 
       _ ->
         {:noreply, socket |> put_flash(:error, "Could not terminate project")}
@@ -284,7 +284,7 @@ defmodule AppPlannerWeb.AppLive.Show do
     if app.id == id do
       case Planner.get_app(user, id, current_workspace.id) do
         nil ->
-          {:noreply, socket |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
+          {:noreply, socket |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}")}
 
         updated_app ->
           {:noreply, assign(socket, app: updated_app)}
