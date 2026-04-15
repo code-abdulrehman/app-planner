@@ -3,9 +3,12 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
   alias AppPlanner.Planner
   alias AppPlanner.Workspaces
+  alias AppPlannerWeb.ScopeFromPath
 
   @impl true
   def mount(params, _session, socket) do
+    params = ScopeFromPath.merge_scoped_params(params, nil, socket)
+    socket = ScopeFromPath.align_current_workspace(socket, params)
     user = socket.assigns.current_scope.user
     current_workspace = socket.assigns.current_workspace
 
@@ -155,6 +158,8 @@ defmodule AppPlannerWeb.TaskLive.Index do
        |> assign(:editing_field, nil)
        |> assign(:inline_add_status, nil)
        |> assign(:inline_add_title, "")
+       |> assign(:inline_add_assignee_id, "")
+       |> assign(:inline_add_due_date, "")
        |> assign(:inline_add_icon, "pencil")
        |> assign(:expanded_apps, MapSet.new([app_id]))
        |> assign(:sidebar_collapsed, false)
@@ -191,11 +196,36 @@ defmodule AppPlannerWeb.TaskLive.Index do
   end
 
   @impl true
-  def handle_params(params, _url, socket) do
+  def handle_params(params, url, socket) do
+    user = socket.assigns.current_scope.user
+    params = ScopeFromPath.merge_scoped_params(params, url, socket)
+    socket = ScopeFromPath.align_current_workspace(socket, params)
+    current_workspace = socket.assigns.current_workspace
+
+    socket =
+      if task_route_context_changed?(socket, params) do
+        case assign_metadata(socket, user, current_workspace, params) do
+          {:ok, s} -> s
+        end
+      else
+        socket
+      end
+
     {:noreply,
      socket
      |> apply_action(socket.assigns.live_action, params)
      |> fetch_tasks()}
+  end
+
+  defp task_route_context_changed?(socket, params) do
+    eq? = fn a, b -> to_string(a || "") == to_string(b || "") end
+
+    not eq?.(socket.assigns[:workspace_id], params["workspace_id"]) or
+      not eq?.(socket.assigns[:app_id], params["app_id"]) or
+      not eq?.(
+        socket.assigns[:feature] && socket.assigns.feature.id,
+        params["feature_id"]
+      )
   end
 
   defp apply_action(socket, :index, _params) do
@@ -807,6 +837,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                       >
                         <form
                           id={"inline-add-form-#{status |> String.downcase() |> String.replace(~r/[^a-z0-9]/, "-")}"}
+                          phx-change="inline_add_draft"
                           phx-submit="save_inline_task"
                           class="space-y-4"
                         >
@@ -868,15 +899,26 @@ defmodule AppPlannerWeb.TaskLive.Index do
                                 onclick="event.stopPropagation()"
                                 class="pointer-events-auto select select-ghost select-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black uppercase h-7 px-2 min-h-0 min-w-[100px] rounded-lg"
                               >
-                                <option value="">Unassigned</option>
+                                <option value="" selected={@inline_add_assignee_id in [nil, ""]}>
+                                  Unassigned
+                                </option>
                                 <%= for member <- @workspace_members do %>
-                                  <option value={member.user_id}>{member.user.email}</option>
+                                  <option
+                                    value={member.user_id}
+                                    selected={
+                                      to_string(member.user_id) ==
+                                        to_string(@inline_add_assignee_id || "")
+                                    }
+                                  >
+                                    {member.user.email}
+                                  </option>
                                 <% end %>
                               </select>
                               <div class="w-px h-4 bg-base-100 mx-1"></div>
                               <input
                                 type="date"
                                 name="due_date"
+                                value={@inline_add_due_date || ""}
                                 class="input input-ghost input-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black h-7 px-2 min-h-0 rounded-lg w-28"
                               />
                             </div>
@@ -2451,6 +2493,14 @@ defmodule AppPlannerWeb.TaskLive.Index do
            |> assign(apps_with_features: apps_with_features)}
         end
 
+      {:error, %Ecto.Changeset{} = cs} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           "Could not delete project: #{format_changeset_errors(cs)}"
+         )}
+
       _ ->
         {:noreply, socket |> put_flash(:error, "Could not delete project")}
     end
@@ -2458,17 +2508,41 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
   @impl true
   def handle_event("toggle_inline_add", %{"status" => status}, socket) do
-    {:noreply, assign(socket, inline_add_status: status, inline_add_title: "")}
+    {:noreply,
+     assign(socket,
+       inline_add_status: status,
+       inline_add_title: "",
+       inline_add_assignee_id: "",
+       inline_add_due_date: "",
+       inline_add_icon: "pencil"
+     )}
   end
 
   @impl true
   def handle_event("cancel_inline_add", _, socket) do
     {:noreply,
-     assign(socket, inline_add_status: nil, inline_add_title: "", inline_add_icon: "pencil")}
+     assign(socket,
+       inline_add_status: nil,
+       inline_add_title: "",
+       inline_add_assignee_id: "",
+       inline_add_due_date: "",
+       inline_add_icon: "pencil"
+     )}
   end
 
   def handle_event("set_inline_icon", %{"icon" => icon}, socket) do
     {:noreply, assign(socket, :inline_add_icon, icon)}
+  end
+
+  @impl true
+  def handle_event("inline_add_draft", params, socket) do
+    {:noreply,
+     assign(socket,
+       inline_add_title: Map.get(params, "title", socket.assigns.inline_add_title),
+       inline_add_assignee_id:
+         Map.get(params, "assignee_id", socket.assigns.inline_add_assignee_id),
+       inline_add_due_date: Map.get(params, "due_date", socket.assigns.inline_add_due_date)
+     )}
   end
 
   @impl true
@@ -2492,11 +2566,24 @@ defmodule AppPlannerWeb.TaskLive.Index do
         # Clear title and close the form
         {:noreply,
          socket
-         |> assign(inline_add_title: "", inline_add_status: nil, inline_add_icon: "pencil")
+         |> assign(
+           inline_add_title: "",
+           inline_add_status: nil,
+           inline_add_assignee_id: "",
+           inline_add_due_date: "",
+           inline_add_icon: "pencil"
+         )
          |> fetch_tasks()}
 
       _ ->
-        {:noreply, socket |> put_flash(:error, "Could not create task")}
+        {:noreply,
+         socket
+         |> assign(
+           inline_add_title: params["title"] || socket.assigns.inline_add_title,
+           inline_add_assignee_id: params["assignee_id"] || socket.assigns.inline_add_assignee_id,
+           inline_add_due_date: params["due_date"] || socket.assigns.inline_add_due_date
+         )
+         |> put_flash(:error, "Could not create task (check required fields).")}
     end
   end
 
@@ -2527,8 +2614,16 @@ defmodule AppPlannerWeb.TaskLive.Index do
            |> assign(apps_with_features: apps_with_features)}
         end
 
+      {:error, %Ecto.Changeset{} = cs} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           "Could not delete module: #{format_changeset_errors(cs)}"
+         )}
+
       _ ->
-        {:noreply, socket |> put_flash(:error, "Could not delete feature")}
+        {:noreply, socket |> put_flash(:error, "Could not delete module")}
     end
   end
 
@@ -2546,5 +2641,10 @@ defmodule AppPlannerWeb.TaskLive.Index do
       _ ->
         {:noreply, socket |> put_flash(:error, "Could not delete task")}
     end
+  end
+
+  defp format_changeset_errors(%Ecto.Changeset{errors: errors}) do
+    errors
+    |> Enum.map_join("; ", fn {field, {msg, _}} -> "#{field} #{msg}" end)
   end
 end

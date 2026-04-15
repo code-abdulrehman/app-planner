@@ -4,6 +4,7 @@ defmodule AppPlannerWeb.AppLive.Form do
   alias AppPlanner.Planner
   alias AppPlanner.Planner.App
   alias AppPlannerWeb.IconHelper
+  alias AppPlannerWeb.ScopeFromPath
 
   @impl true
   def render(assigns) do
@@ -144,42 +145,68 @@ defmodule AppPlannerWeb.AppLive.Form do
   end
 
   @impl true
-  def mount(params, _session, socket) do
-    user = socket.assigns.current_scope.user
+  def mount(_params, _session, socket) do
     workspace = socket.assigns.current_workspace
 
-    socket =
-      socket
-      |> assign(:icon_search, "")
-      |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 18))
-      |> assign(:current_workspace, workspace)
-
-    {:ok, apply_action(socket, socket.assigns.live_action, params, user, workspace)}
+    {:ok,
+     socket
+     |> assign(:icon_search, "")
+     |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 18))
+     |> assign(:current_workspace, workspace)}
   end
 
-  defp apply_action(socket, :edit, %{"id" => id}, user, workspace) do
-    app = Planner.get_app!(id, user, workspace.id)
-
-    socket
-    |> assign(:page_title, "Update Roadmap")
-    |> assign(:app, app)
-    |> assign(:icon_preview, app.icon)
-    |> assign(:form, to_form(Planner.change_app(app)))
+  @impl true
+  def handle_params(params, url, socket) do
+    params = ScopeFromPath.merge_scoped_params(params, url, socket)
+    socket = ScopeFromPath.align_current_workspace(socket, params)
+    user = socket.assigns.current_scope.user
+    workspace = socket.assigns.current_workspace
+    {:noreply, apply_action(socket, socket.assigns.live_action, params, user, workspace)}
   end
 
-  defp apply_action(socket, :new, _params, _user, _workspace) do
+  defp apply_action(socket, :edit, params, user, workspace) do
+    case Map.get(params, "id") do
+      nil ->
+        socket
+        |> put_flash(:error, "Missing project id.")
+        |> push_navigate(to: ~p"/workspaces/#{workspace.id}/board")
+
+      id ->
+        app = Planner.get_app!(id, user, workspace.id)
+
+        socket
+        |> assign(:page_title, "Update Roadmap")
+        |> assign(:app, app)
+        |> assign(:icon_preview, app.icon)
+        |> assign(:form, to_form(Planner.change_app(app)))
+    end
+  end
+
+  defp apply_action(socket, :new, _params, _user, workspace) do
     app = %App{}
+    wid = to_string(workspace.id)
+
+    changeset =
+      Planner.change_app(app, %{
+        "name" => "",
+        "description" => "",
+        "status" => "Idea",
+        "workspace_id" => wid
+      })
 
     socket
     |> assign(:page_title, "New Project")
     |> assign(:app, app)
     |> assign(:icon_preview, nil)
-    |> assign(:form, to_form(Planner.change_app(app)))
+    |> assign(:form, to_form(changeset))
   end
 
   @impl true
   def handle_event("validate", %{"app" => app_params}, socket) do
-    app_params = Map.put(app_params, "icon", socket.assigns.icon_preview)
+    app_params =
+      app_params
+      |> Map.put("icon", socket.assigns.icon_preview)
+      |> ensure_app_workspace_params(socket)
 
     changeset =
       socket.assigns.app
@@ -203,13 +230,41 @@ defmodule AppPlannerWeb.AppLive.Form do
 
   @impl true
   def handle_event("select-icon", %{"icon" => icon}, socket) do
-    {:noreply, assign(socket, icon_preview: icon)}
+    cs =
+      socket.assigns.form.source
+      |> Ecto.Changeset.put_change(:icon, icon)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket
+     |> assign(:icon_preview, icon)
+     |> assign(:form, to_form(cs))}
   end
 
   @impl true
   def handle_event("save", %{"app" => app_params}, socket) do
-    app_params = Map.put(app_params, "icon", socket.assigns.icon_preview)
+    app_params =
+      app_params
+      |> Map.put("icon", socket.assigns.icon_preview)
+      |> ensure_app_workspace_params(socket)
+
     save_app(socket, socket.assigns.live_action, app_params)
+  end
+
+  defp ensure_app_workspace_params(params, socket) do
+    wid = socket.assigns.current_workspace.id
+    app = socket.assigns.app
+
+    cond do
+      match?(%App{id: nil}, app) ->
+        Map.put(params, "workspace_id", to_string(wid))
+
+      app.workspace_id != nil ->
+        Map.put(params, "workspace_id", to_string(app.workspace_id))
+
+      true ->
+        Map.put(params, "workspace_id", to_string(wid))
+    end
   end
 
   defp save_app(socket, :edit, app_params) do

@@ -4,6 +4,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   alias AppPlanner.Planner
   alias AppPlanner.Planner.Feature
   alias AppPlannerWeb.IconHelper
+  alias AppPlannerWeb.ScopeFromPath
 
   @impl true
   def render(assigns) do
@@ -157,36 +158,58 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   end
 
   @impl true
-  def mount(params, _session, socket) do
+  def mount(_params, _session, socket) do
     current_workspace = socket.assigns.current_workspace
 
     {:ok,
      socket
-     |> assign(:return_to, params["return_to"] || "app")
+     |> assign(:return_to, "app")
      |> assign(:icon_search, "")
      |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 20))
-     |> assign(:current_workspace, current_workspace)
-     |> apply_action(socket.assigns.live_action, params, current_workspace)}
+     |> assign(:current_workspace, current_workspace)}
   end
 
-  defp apply_action(socket, :edit, %{"id" => id}, current_workspace) do
+  @impl true
+  def handle_params(params, url, socket) do
+    params = ScopeFromPath.merge_scoped_params(params, url, socket)
+    socket = ScopeFromPath.align_current_workspace(socket, params)
+    current_workspace = socket.assigns.current_workspace
+    return_to = params["return_to"] || socket.assigns.return_to || "app"
     user = socket.assigns.current_scope.user
-    feature = Planner.get_feature!(id, user, current_workspace.id)
-    app = Planner.get_app!(feature.app_id, user, current_workspace.id)
     apps = Planner.list_apps(user, current_workspace.id)
 
-    socket
-    |> assign(:page_title, "Update Module")
-    |> assign(:feature, %{feature | app: app})
-    |> assign(:apps, apps)
-    |> assign(:icon_preview, feature.icon)
-    |> assign(:form, to_form(Planner.change_feature(feature)))
+    socket =
+      socket
+      |> assign(:return_to, return_to)
+      |> assign(:apps, apps)
+
+    {:noreply, apply_action(socket, socket.assigns.live_action, params, current_workspace)}
+  end
+
+  defp apply_action(socket, :edit, params, current_workspace) do
+    user = socket.assigns.current_scope.user
+
+    case Map.get(params, "id") do
+      nil ->
+        socket
+        |> put_flash(:error, "Missing module id.")
+        |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/board")
+
+      id ->
+        feature = Planner.get_feature!(id, user, current_workspace.id)
+        app = Planner.get_app!(feature.app_id, user, current_workspace.id)
+
+        socket
+        |> assign(:page_title, "Update Module")
+        |> assign(:feature, %{feature | app: app})
+        |> assign(:icon_preview, feature.icon)
+        |> assign(:form, to_form(Planner.change_feature(feature)))
+    end
   end
 
   defp apply_action(socket, :new, params, current_workspace) do
     user = socket.assigns.current_scope.user
     app_id = params["app_id"]
-    apps = Planner.list_apps(user, current_workspace.id)
 
     feature = %Feature{
       app_id: app_id && if(is_binary(app_id), do: String.to_integer(app_id), else: app_id)
@@ -200,14 +223,16 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     socket
     |> assign(:page_title, "New Module")
     |> assign(:feature, feature)
-    |> assign(:apps, apps)
     |> assign(:icon_preview, nil)
     |> assign(:form, to_form(Planner.change_feature(feature)))
   end
 
   @impl true
   def handle_event("validate", %{"feature" => feature_params}, socket) do
-    feature_params = Map.put(feature_params, "icon", socket.assigns.icon_preview)
+    feature_params =
+      feature_params
+      |> Map.put("icon", socket.assigns.icon_preview)
+      |> ensure_feature_persisted_fields(socket)
 
     changeset =
       socket.assigns.feature
@@ -229,13 +254,39 @@ defmodule AppPlannerWeb.FeatureLive.Form do
 
   @impl true
   def handle_event("select-icon", %{"icon" => icon}, socket) do
-    {:noreply, assign(socket, icon_preview: icon)}
+    cs =
+      socket.assigns.form.source
+      |> Ecto.Changeset.put_change(:icon, icon)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket
+     |> assign(:icon_preview, icon)
+     |> assign(:form, to_form(cs))}
   end
 
   @impl true
   def handle_event("save", %{"feature" => feature_params}, socket) do
-    feature_params = Map.put(feature_params, "icon", socket.assigns.icon_preview)
+    feature_params =
+      feature_params
+      |> Map.put("icon", socket.assigns.icon_preview)
+      |> ensure_feature_persisted_fields(socket)
+
     save_feature(socket, socket.assigns.live_action, feature_params)
+  end
+
+  defp ensure_feature_persisted_fields(params, socket) do
+    user = socket.assigns.current_scope.user
+    feature = socket.assigns.feature
+
+    params
+    |> Map.put_new("user_id", to_string(feature.user_id || user.id))
+    |> Map.put_new("last_updated_by_id", to_string(user.id))
+    |> then(fn p ->
+      if feature.app_id,
+        do: Map.put_new(p, "app_id", to_string(feature.app_id)),
+        else: p
+    end)
   end
 
   defp save_feature(socket, :edit, feature_params) do

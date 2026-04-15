@@ -6,10 +6,12 @@ defmodule AppPlannerWeb.WorkspaceSelector do
   use AppPlannerWeb, :html
 
   alias AppPlanner.Workspaces
+  alias AppPlannerWeb.ScopeFromPath
 
   def on_mount(:load_current_workspace, params, _session, socket) do
-    workspace_id =
-      params["workspace_id"] || params["id"]
+    params = ScopeFromPath.merge_scoped_params(params, nil, socket)
+
+    workspace_id = params["workspace_id"] || params["id"]
 
     user = socket.assigns.current_scope.user
 

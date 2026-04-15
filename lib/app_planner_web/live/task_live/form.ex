@@ -290,7 +290,15 @@ defmodule AppPlannerWeb.TaskLive.Form do
 
   @impl true
   def handle_event("select-icon", %{"icon" => icon}, socket) do
-    {:noreply, assign(socket, :icon_preview, icon)}
+    cs =
+      socket.assigns.form.source
+      |> Ecto.Changeset.put_change(:icon, icon)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket
+     |> assign(:icon_preview, icon)
+     |> assign(:form, to_form(cs))}
   end
 
   @impl true

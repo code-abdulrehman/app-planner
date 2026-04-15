@@ -86,7 +86,24 @@ defmodule AppPlanner.Planner do
     app |> App.changeset(attrs) |> Repo.update()
   end
 
-  def delete_app(%App{} = app), do: Repo.delete(app)
+  def delete_app(%App{} = app) do
+    Repo.transaction(fn ->
+      # DB FK: features.app_id -> apps is on_delete: :nothing, so remove features first
+      # (tasks are removed via feature_id cascade or explicit delete below).
+      _ = Repo.delete_all(from(f in Feature, where: f.app_id == ^app.id))
+
+      case Repo.delete(app) do
+        {:ok, deleted} -> deleted
+        {:error, changeset} -> Repo.rollback({:delete_app, changeset})
+      end
+    end)
+    |> case do
+      {:ok, deleted} -> {:ok, deleted}
+      {:error, {:delete_app, changeset}} -> {:error, changeset}
+      {:error, _} = err -> err
+    end
+  end
+
   def change_app(%App{} = app, attrs \\ %{}), do: App.changeset(app, attrs)
 
   def create_example_app(user, workspace_id) do
@@ -164,7 +181,14 @@ defmodule AppPlanner.Planner do
     end
   end
 
-  def get_feature!(id, user, workspace_id) do
+  def get_feature!(id, user, workspace_id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, _} -> get_feature!(int, user, workspace_id)
+      :error -> raise ArgumentError, "invalid feature id"
+    end
+  end
+
+  def get_feature!(id, user, workspace_id) when is_integer(id) do
     feature =
       Feature |> where([f], f.id == ^id) |> Repo.one!() |> Repo.preload([:app, :last_updated_by])
 
@@ -191,7 +215,30 @@ defmodule AppPlanner.Planner do
     |> Repo.all()
   end
 
-  def delete_feature(%Feature{} = feature), do: Repo.delete(feature)
+  def delete_feature(%Feature{} = feature) do
+    fid = feature.id
+
+    Repo.transaction(fn ->
+      # Clear self-references so tasks in this feature can be bulk-deleted safely.
+      _ =
+        Repo.update_all(from(t in Task, where: t.feature_id == ^fid),
+          set: [parent_task_id: nil]
+        )
+
+      _ = Repo.delete_all(from(t in Task, where: t.feature_id == ^fid))
+
+      case Repo.delete(feature) do
+        {:ok, f} -> f
+        {:error, changeset} -> Repo.rollback({:delete_feature, changeset})
+      end
+    end)
+    |> case do
+      {:ok, f} -> {:ok, f}
+      {:error, {:delete_feature, changeset}} -> {:error, changeset}
+      {:error, _} = err -> err
+    end
+  end
+
   def change_feature(%Feature{} = feature, attrs \\ %{}), do: Feature.changeset(feature, attrs)
 
   # ============================================================================

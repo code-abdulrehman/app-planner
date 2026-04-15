@@ -138,8 +138,13 @@ defmodule AppPlannerWeb.FeatureLive.Index do
     user = socket.assigns.current_scope.user
     current_workspace = socket.assigns.current_workspace
     feature = Planner.get_feature!(id, user, current_workspace.id)
-    {:ok, _} = Planner.delete_feature(feature)
 
-    {:noreply, stream_delete(socket, :features, feature)}
+    case Planner.delete_feature(feature) do
+      {:ok, _} ->
+        {:noreply, stream_delete(socket, :features, feature)}
+
+      _ ->
+        {:noreply, socket |> put_flash(:error, "Could not delete module")}
+    end
   end
 end
