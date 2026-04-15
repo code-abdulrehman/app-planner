@@ -21,7 +21,7 @@ defmodule AppPlannerWeb.AppLive.Export do
            socket
            |> put_flash(:error, "This project is no longer available.")
            # Corrected routing
-           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
+           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}")}
 
         app ->
           # Recursively load children and their features if needed
@@ -325,7 +325,7 @@ defmodule AppPlannerWeb.AppLive.Export do
                   <%= if length(child.features) > 0 do %>
                     <div class="space-y-8 pl-8 border-l-4 border-slate-50">
                       <h4 class="text-xs font-black uppercase tracking-[0.4em] text-slate-400">
-                        System Modules & Features
+                        System Features
                       </h4>
 
                       <div class="grid grid-cols-1 gap-12">

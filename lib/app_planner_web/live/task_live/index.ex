@@ -3,9 +3,13 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
   alias AppPlanner.Planner
   alias AppPlanner.Workspaces
+  alias AppPlannerWeb.ScopeFromPath
 
   @impl true
   def mount(params, _session, socket) do
+    uri = mount_connect_uri(socket)
+    params = ScopeFromPath.merge_scoped_params(params, uri)
+    socket = ScopeFromPath.align_current_workspace(socket, params)
     user = socket.assigns.current_scope.user
     current_workspace = socket.assigns.current_workspace
 
@@ -41,22 +45,36 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
               [] ->
                 # Create a sample feature if the app exists but has no features
-                {:ok, feature} =
-                  Planner.create_feature(
-                    %{
-                      "name" => "Core Assets",
-                      "app_id" => target_app.id,
-                      "workspace_id" => workspace_id,
-                      "description" => "A sample feature to get you started."
-                    },
-                    user
-                  )
+                feature_attrs = %{
+                  "title" => "Core Assets",
+                  "app_id" => target_app.id,
+                  "description" => "A sample feature to get you started.",
+                  "icon" => "sparkles"
+                }
 
-                {:ok,
-                 push_navigate(socket,
-                   to:
-                     ~p"/workspaces/#{workspace_id}/apps/#{target_app.id}/features/#{feature.id}/tasks"
-                 )}
+                feature =
+                  case Planner.create_feature(feature_attrs, user) do
+                    {:ok, feature} -> feature
+                    {:error, _changeset} -> nil
+                  end
+
+                if is_nil(feature) do
+                  {:ok,
+                   socket
+                   |> put_flash(
+                     :error,
+                     "Couldn't create a starter feature. Please add one manually."
+                   )
+                   |> push_navigate(
+                     to: ~p"/workspaces/#{workspace_id}/apps/#{target_app.id}/features/new"
+                   )}
+                else
+                  {:ok,
+                   push_navigate(socket,
+                     to:
+                       ~p"/workspaces/#{workspace_id}/apps/#{target_app.id}/features/#{feature.id}/tasks"
+                   )}
+                end
             end
 
           [] ->
@@ -72,25 +90,48 @@ defmodule AppPlannerWeb.TaskLive.Index do
                 workspace_id
               )
 
-            {:ok, feature} =
-              Planner.create_feature(
-                %{
-                  "name" => "Core Assets",
-                  "app_id" => app.id,
-                  "workspace_id" => workspace_id,
-                  "description" => "A sample feature to get you started."
-                },
-                user
-              )
+            feature_attrs = %{
+              "title" => "Core Assets",
+              "app_id" => app.id,
+              "description" => "A sample feature to get you started.",
+              "icon" => "sparkles"
+            }
 
-            {:ok,
-             push_navigate(socket,
-               to: ~p"/workspaces/#{workspace_id}/apps/#{app.id}/features/#{feature.id}/tasks"
-             )}
+            feature =
+              case Planner.create_feature(feature_attrs, user) do
+                {:ok, feature} -> feature
+                {:error, _changeset} -> nil
+              end
+
+            if is_nil(feature) do
+              {:ok,
+               socket
+               |> put_flash(
+                 :error,
+                 "Project created, but starter feature failed. Please add one."
+               )
+               |> push_navigate(to: ~p"/workspaces/#{workspace_id}/apps/#{app.id}/features/new")}
+            else
+              {:ok,
+               push_navigate(socket,
+                 to: ~p"/workspaces/#{workspace_id}/apps/#{app.id}/features/#{feature.id}/tasks"
+               )}
+            end
         end
 
       true ->
         assign_metadata(socket, user, current_workspace, params)
+    end
+  end
+
+  defp mount_connect_uri(socket) do
+    if Phoenix.LiveView.connected?(socket) do
+      case Phoenix.LiveView.get_connect_info(socket, :uri) do
+        %URI{} = u -> u
+        _ -> nil
+      end
+    else
+      nil
     end
   end
 
@@ -129,6 +170,8 @@ defmodule AppPlannerWeb.TaskLive.Index do
        |> assign(:editing_field, nil)
        |> assign(:inline_add_status, nil)
        |> assign(:inline_add_title, "")
+       |> assign(:inline_add_assignee_id, "")
+       |> assign(:inline_add_due_date, "")
        |> assign(:inline_add_icon, "pencil")
        |> assign(:expanded_apps, MapSet.new([app_id]))
        |> assign(:sidebar_collapsed, false)
@@ -165,11 +208,36 @@ defmodule AppPlannerWeb.TaskLive.Index do
   end
 
   @impl true
-  def handle_params(params, _url, socket) do
+  def handle_params(params, url, socket) do
+    user = socket.assigns.current_scope.user
+    params = ScopeFromPath.merge_scoped_params(params, url)
+    socket = ScopeFromPath.align_current_workspace(socket, params)
+    current_workspace = socket.assigns.current_workspace
+
+    socket =
+      if task_route_context_changed?(socket, params) do
+        case assign_metadata(socket, user, current_workspace, params) do
+          {:ok, s} -> s
+        end
+      else
+        socket
+      end
+
     {:noreply,
      socket
      |> apply_action(socket.assigns.live_action, params)
      |> fetch_tasks()}
+  end
+
+  defp task_route_context_changed?(socket, params) do
+    eq? = fn a, b -> to_string(a || "") == to_string(b || "") end
+
+    not eq?.(socket.assigns[:workspace_id], params["workspace_id"]) or
+      not eq?.(socket.assigns[:app_id], params["app_id"]) or
+      not eq?.(
+        socket.assigns[:feature] && socket.assigns.feature.id,
+        params["feature_id"]
+      )
   end
 
   defp apply_action(socket, :index, _params) do
@@ -248,17 +316,20 @@ defmodule AppPlannerWeb.TaskLive.Index do
           <%= for a <- @apps_with_features do %>
             <div class="space-y-0.5">
               <div
-                phx-click="toggle_app"
-                phx-value-id={a.id}
                 class={[
-                  "flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all group",
+                  "flex items-center justify-between p-2 rounded-lg transition-all group",
                   if(to_string(a.id) == to_string(@app_id),
                     do: "bg-primary/5 text-primary",
                     else: "hover:bg-base-200 text-base-content/70"
                   )
                 ]}
               >
-                <div class="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  phx-click="toggle_app"
+                  phx-value-id={a.id}
+                  class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer text-left"
+                >
                   <.icon
                     name={
                       if MapSet.member?(@expanded_apps, to_string(a.id)),
@@ -274,17 +345,13 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   <span class="text-[11px] font-bold text-base-content/80 truncate w-32">
                     {a.name}
                   </span>
-                </div>
+                </button>
 
-                <div
-                  class="dropdown dropdown-end"
-                  onclick="event.stopPropagation()"
-                  text-left
-                >
+                <div class="dropdown dropdown-end" text-left>
                   <button
                     tabindex="0"
+                    type="button"
                     class="btn btn-ghost btn-xs w-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onclick="event.stopPropagation()"
                   >
                     <.icon name="hero-ellipsis-horizontal" class="w-3.5 h-3.5" />
                   </button>
@@ -299,6 +366,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     </li>
                     <li>
                       <button
+                        type="button"
                         phx-click="delete_app"
                         phx-value-id={a.id}
                         data-confirm="Delete this project?"
@@ -331,11 +399,11 @@ defmodule AppPlannerWeb.TaskLive.Index do
                       <span class="truncate">{f.title}</span>
                     </.link>
 
-                    <div class="dropdown dropdown-end" onclick="event.stopPropagation()" text-left>
+                    <div class="dropdown dropdown-end" text-left>
                       <button
                         tabindex="0"
+                        type="button"
                         class="btn btn-ghost btn-xs w-4 ml-1 opacity-0 group-hover/feature:opacity-100 transition-opacity"
-                        onclick="event.stopPropagation()"
                       >
                         <.icon name="hero-ellipsis-vertical" class="w-3 h-3" />
                       </button>
@@ -352,9 +420,10 @@ defmodule AppPlannerWeb.TaskLive.Index do
                         </li>
                         <li>
                           <button
+                            type="button"
                             phx-click="delete_feature"
                             phx-value-id={f.id}
-                            data-confirm="Delete this module?"
+                            data-confirm="Delete this feature?"
                             class="text-error hover:bg-error/5"
                           >
                             <.icon name="hero-trash" class="w-3 h-3" /> Delete
@@ -368,7 +437,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   navigate={~p"/workspaces/#{@workspace_id}/apps/#{a.id}/features/new"}
                   class="flex items-center gap-2.5 px-3 py-2 text-[9px] font-bold text-base-content/30 hover:text-primary transition-colors pl-4"
                 >
-                  <.icon name="hero-plus-circle" class="w-3.5 h-3.5" /> Add Module
+                  <.icon name="hero-plus-circle" class="w-3.5 h-3.5" /> Add Feature
                 </.link>
               </div>
             </div>
@@ -383,7 +452,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
           </.link>
         </div>
       </aside>
-
+      
     <!-- Main Content Area -->
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Header -->
@@ -399,7 +468,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   class="w-5 h-5"
                 />
               </button>
-
+              
     <!-- Breadcrumbs -->
               <div :if={@app && @feature} class="hidden md:flex items-center gap-2">
                 <span class="text-[10px] font-bold text-base-content/60">{@app.name}</span>
@@ -409,10 +478,10 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
               <div :if={!(@app && @feature)} class="hidden md:flex items-center gap-2">
                 <div class="text-[10px] font-bold text-base-content/30">
-                  Select a module from the sidebar
+                  Select a feature from the sidebar
                 </div>
               </div>
-
+              
     <!-- Avatars Group -->
               <div class="flex items-center gap-2 pl-6 border-l border-base-200">
                 <div class="flex -space-x-1.5">
@@ -447,7 +516,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   Select Task
                 </h3>
                 <p class="text-[11px] text-base-content/40 font-bold uppercase tracking-widest mb-10 px-12 leading-relaxed italic">
-                  Select a project and its specific module from the sidebar to visualize the board.
+                  Select a project and feature from the sidebar to view the board.
                 </p>
                 <div class="flex items-center justify-center gap-6">
                   <div class="flex flex-col items-center gap-2">
@@ -464,14 +533,18 @@ defmodule AppPlannerWeb.TaskLive.Index do
                       2
                     </div>
                     <span class="text-[9px] font-bold text-base-content/40 uppercase tracking-wider">
-                      Module Board
+                      Feature Board
                     </span>
                   </div>
                 </div>
               </div>
             </div>
           <% else %>
-            <div id="kanban-columns" phx-hook="SortableColumns" class="flex gap-6 h-[calc(100vh-100px)] min-w-max">
+            <div
+              id="kanban-columns"
+              phx-hook="SortableColumns"
+              class="flex gap-6 h-[calc(100vh-100px)] min-w-max"
+            >
               <%= for status <- @statuses do %>
                 <div
                   id={"col-#{String.replace(status, ~r/[^a-zA-Z0-9]/, "-")}"}
@@ -520,7 +593,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                         <.icon name="hero-plus" class="w-4.5 h-2" />
                       </.link>
                       <div class="w-0.5 h-5 bg-base-200 rounded mx-0.5" />
-
+                      
     <!-- Column Menu -->
                       <div class="dropdown dropdown-end">
                         <button
@@ -768,119 +841,131 @@ defmodule AppPlannerWeb.TaskLive.Index do
                         <% end %>
                       </div>
                     <% end %>
-                    </div>
-                    <div class="px-1 pb-3 js-no-drag">
-                      <%= if @inline_add_status == status do %>
-                        <div
-                          id={"inline-add-container-#{status |> String.downcase() |> String.replace(~r/[^a-z0-9]/, "-")}"}
-                          class="bg-base-100 p-4 rounded-xl shadow-xl border border-primary ring-1 ring-primary/20 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-visible"
+                  </div>
+                  <div class="px-1 pb-3 js-no-drag">
+                    <%= if @inline_add_status == status do %>
+                      <div
+                        id={"inline-add-container-#{status |> String.downcase() |> String.replace(~r/[^a-z0-9]/, "-")}"}
+                        class="bg-base-100 p-4 rounded-xl shadow-xl border border-primary ring-1 ring-primary/20 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-visible"
+                      >
+                        <form
+                          id={"inline-add-form-#{status |> String.downcase() |> String.replace(~r/[^a-z0-9]/, "-")}"}
+                          phx-change="inline_add_draft"
+                          phx-submit="save_inline_task"
+                          class="space-y-4"
                         >
-                          <form
-                            id={"inline-add-form-#{status |> String.downcase() |> String.replace(~r/[^a-z0-9]/, "-")}"}
-                            phx-submit="save_inline_task"
-                            class="space-y-4"
-                          >
-                            <input type="hidden" name="status" value={status} />
+                          <input type="hidden" name="status" value={status} />
 
-                            <div class="flex items-start gap-2">
-                              <div
-                                class="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary cursor-pointer hover:bg-primary/20 transition-all dropdown dropdown-right"
-                                title="Select Icon"
+                          <div class="flex items-start gap-2">
+                            <div
+                              class="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 text-primary cursor-pointer hover:bg-primary/20 transition-all dropdown dropdown-right"
+                              title="Select Icon"
+                            >
+                              <button
+                                type="button"
+                                tabindex="0"
+                                class="cursor-pointer"
                               >
-                                <button
-                                  type="button"
-                                  tabindex="0"
-                                  class="cursor-pointer"
-                                >
-                                  <.icon
-                                    name={
-                                      if @inline_add_icon && @inline_add_icon != "",
-                                        do: "hero-#{@inline_add_icon}",
-                                        else: "hero-pencil"
-                                    }
-                                    class="w-2.5 h-2.5"
-                                  />
-                                  <input type="hidden" name="icon" value={@inline_add_icon} />
-                                </button>
+                                <.icon
+                                  name={
+                                    if @inline_add_icon && @inline_add_icon != "",
+                                      do: "hero-#{@inline_add_icon}",
+                                      else: "hero-pencil"
+                                  }
+                                  class="w-2.5 h-2.5"
+                                />
+                                <input type="hidden" name="icon" value={@inline_add_icon} />
+                              </button>
 
-                                <div
-                                    tabindex="0"
-                                    class="dropdown-content z-[999] p-2 shadow-2xl bg-base-100 rounded-xl border border-base-200 w-48 mb-2 flex flex-wrap gap-1"
+                              <div
+                                tabindex="0"
+                                class="dropdown-content z-[999] p-2 shadow-2xl bg-base-100 rounded-xl border border-base-200 w-48 mb-2 flex flex-wrap gap-1"
+                              >
+                                <%= for icon <- ~w(rocket-launch sparkles bug-ant bolt star fire heart cube globe-alt cpu-chip light-bulb beaker cloud) do %>
+                                  <button
+                                    type="button"
+                                    phx-click={JS.push("set_inline_icon", value: %{icon: icon})}
+                                    class={"p-1.5 rounded-lg hover:bg-primary/10 transition-all #{if @inline_add_icon == icon, do: "bg-primary/20 text-primary", else: "text-base-content/40 hover:text-primary"}"}
                                   >
-                                    <%= for icon <- ~w(rocket-launch sparkles bug-ant bolt star fire heart cube globe-alt cpu-chip light-bulb beaker cloud) do %>
-                                      <button
-                                        type="button"
-                                        phx-click={JS.push("set_inline_icon", value: %{icon: icon})}
-                                        class={"p-1.5 rounded-lg hover:bg-primary/10 transition-all #{if @inline_add_icon == icon, do: "bg-primary/20 text-primary", else: "text-base-content/40 hover:text-primary"}"}
-                                      >
-                                        <.icon name={"hero-#{icon}"} class="w-3 h-3" />
-                                      </button>
-                                    <% end %>
-                                  </div>
-                              </div>
-                              <div class="flex-1">
-                                <input
-                                  name="title"
-                                  value={@inline_add_title}
-                                  placeholder="Type a title..."
-                                  class="w-full bg-transparent border-none focus:ring-0 p-0 text-md font-medium text-base-content leading-tight placeholder:text-base-content/20"
-                                  autofocus
-                                  required
-                                  autocomplete="off"
-                                />
+                                    <.icon name={"hero-#{icon}"} class="w-3 h-3" />
+                                  </button>
+                                <% end %>
                               </div>
                             </div>
+                            <div class="flex-1">
+                              <input
+                                name="title"
+                                value={@inline_add_title}
+                                placeholder="Type a title..."
+                                class="w-full bg-transparent border-none focus:ring-0 p-0 text-md font-medium text-base-content leading-tight placeholder:text-base-content/20"
+                                autofocus
+                                required
+                                autocomplete="off"
+                              />
+                            </div>
+                          </div>
 
-                            <div class="flex items-center justify-between pt-3 border-t border-base-100">
-                              <div class="flex items-center gap-2 flex-1 h-auto">
-                                <select
-                                  name="assignee_id"
-                                  onclick="event.stopPropagation()"
-                                  class="pointer-events-auto select select-ghost select-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black uppercase h-7 px-2 min-h-0 min-w-[100px] rounded-lg"
-                                >
-                                  <option value="">Unassigned</option>
-                                  <%= for member <- @workspace_members do %>
-                                    <option value={member.user_id}>{member.user.email}</option>
-                                  <% end %>
-                                </select>
-                                <div class="w-px h-4 bg-base-100 mx-1"></div>
-                                <input
-                                  type="date"
-                                  name="due_date"
-                                  class="input input-ghost input-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black h-7 px-2 min-h-0 rounded-lg w-28"
-                                />
-                              </div>
+                          <div class="flex items-center justify-between pt-3 border-t border-base-100">
+                            <div class="flex items-center gap-2 flex-1 h-auto">
+                              <select
+                                name="assignee_id"
+                                onclick="event.stopPropagation()"
+                                class="pointer-events-auto select select-ghost select-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black uppercase h-7 px-2 min-h-0 min-w-[100px] rounded-lg"
+                              >
+                                <option value="" selected={@inline_add_assignee_id in [nil, ""]}>
+                                  Unassigned
+                                </option>
+                                <%= for member <- @workspace_members do %>
+                                  <option
+                                    value={member.user_id}
+                                    selected={
+                                      to_string(member.user_id) ==
+                                        to_string(@inline_add_assignee_id || "")
+                                    }
+                                  >
+                                    {member.user.email}
+                                  </option>
+                                <% end %>
+                              </select>
+                              <div class="w-px h-4 bg-base-100 mx-1"></div>
+                              <input
+                                type="date"
+                                name="due_date"
+                                value={@inline_add_due_date || ""}
+                                class="input input-ghost input-xs bg-base-100/50 hover:bg-base-200 border-none text-[9px] font-black h-7 px-2 min-h-0 rounded-lg w-28"
+                              />
                             </div>
-                            <div class="flex items-center justify-end w-full">
-                              <div class="flex gap-1.5 shadow-sm rounded-lg p-0.5 bg-base-100 border border-base-200 shrink-0">
-                                <button
-                                  type="submit"
-                                  class="btn btn-primary btn-xs font-black uppercase text-[9px] h-7 px-3 rounded-md"
-                                >
-                                  Add
-                                </button>
-                                <button
-                                  type="button"
-                                  phx-click="cancel_inline_add"
-                                  class="btn btn-ghost btn-xs font-black uppercase text-[9px] h-7 px-1.5 rounded-md text-base-content/40 hover:text-error"
-                                >
-                                  <.icon name="hero-x-mark" class="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                          </div>
+                          <div class="flex items-center justify-end w-full">
+                            <div class="flex gap-1.5 shadow-sm rounded-lg p-0.5 bg-base-100 border border-base-200 shrink-0">
+                              <button
+                                type="submit"
+                                class="btn btn-primary btn-xs font-black uppercase text-[9px] h-7 px-3 rounded-md"
+                              >
+                                Add
+                              </button>
+                              <button
+                                type="button"
+                                phx-click="cancel_inline_add"
+                                class="btn btn-ghost btn-xs font-black uppercase text-[9px] h-7 px-1.5 rounded-md text-base-content/40 hover:text-error"
+                              >
+                                <.icon name="hero-x-mark" class="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          </form>
-                        </div>
-                      <% else %>
-                        <button
-                          phx-click="toggle_inline_add"
-                          phx-value-status={status}
-                          class="btn btn-ghost btn-xs w-full justify-start text-[10px] font-bold text-base-content/40 hover:text-primary hover:bg-primary/5 border-transparent flex gap-1.5 h-10 px-3 transition-all rounded-xl"
-                        >
-                          <.icon name="hero-plus" class="w-3.5 h-3.5" />
-                          <span>Add Task</span>
-                        </button>
-                      <% end %>
-                    </div>
+                          </div>
+                        </form>
+                      </div>
+                    <% else %>
+                      <button
+                        phx-click="toggle_inline_add"
+                        phx-value-status={status}
+                        class="btn btn-ghost btn-xs w-full justify-start text-[10px] font-bold text-base-content/40 hover:text-primary hover:bg-primary/5 border-transparent flex gap-1.5 h-10 px-3 transition-all rounded-xl"
+                      >
+                        <.icon name="hero-plus" class="w-3.5 h-3.5" />
+                        <span>Add Task</span>
+                      </button>
+                    <% end %>
+                  </div>
                 </div>
               <% end %>
 
@@ -1176,7 +1261,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   <% end %>
                 </div>
               </div>
-
+              
     <!-- Rationale Section -->
               <div class="space-y-4">
                 <h3 class="text-[11px] font-black uppercase tracking-widest text-base-content/40 flex items-center gap-2">
@@ -1225,7 +1310,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   <% end %>
                 </div>
               </div>
-
+              
     <!-- Pros & Cons Grid -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-4">
@@ -1324,7 +1409,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   </div>
                 </div>
               </div>
-
+              
     <!-- Strategy & User Flow -->
               <div class="space-y-6">
                 <div>
@@ -1423,7 +1508,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   </div>
                 </div>
               </div>
-
+              
     <!-- Comments Section -->
               <div class="divider"></div>
               <div class="space-y-6 pb-20">
@@ -1470,7 +1555,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                 </form>
               </div>
             </div>
-
+            
     <!-- Right Side: Sidebar Metadata -->
             <div class="space-y-6 bg-base-50/30 p-5 rounded-lg border border-base-200/50 h-fit sticky top-0">
               <div class="space-y-5">
@@ -1524,7 +1609,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     <% end %>
                   </div>
                 </div>
-
+                
     <!-- Assignee -->
                 <div class="space-y-1.5">
                   <label class="text-[10px] font-black uppercase tracking-widest text-base-content/30">
@@ -1596,7 +1681,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                     <% end %>
                   </div>
                 </div>
-
+                
     <!-- Metadata Grid -->
                 <div class="grid grid-cols-2 gap-4">
                   <div class="space-y-1.5">
@@ -1792,7 +1877,6 @@ defmodule AppPlannerWeb.TaskLive.Index do
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </.modal>
@@ -2403,24 +2487,37 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
     case Planner.delete_app(app) do
       {:ok, _} ->
+        # Always reload sidebar so the deleted project disappears immediately.
+        apps_with_features =
+          Planner.list_apps(user, workspace_id)
+          |> Enum.map(fn a ->
+            %{a | features: Planner.list_features(user, a.id, workspace_id)}
+          end)
+
+        socket =
+          socket
+          |> put_flash(:info, "Project deleted")
+          |> assign(apps_with_features: apps_with_features)
+
+        # If the deleted project is the currently selected one, go back to the workspace board.
         if to_string(app.id) == to_string(socket.assigns.app_id) do
           {:noreply,
            socket
-           |> put_flash(:info, "Project deleted")
+           |> assign(:app_id, nil)
+           |> assign(:app, nil)
+           |> assign(:feature, nil)
            |> push_navigate(to: ~p"/workspaces/#{workspace_id}/board")}
         else
-          # Reload sidebar
-          apps_with_features =
-            Planner.list_apps(user, workspace_id)
-            |> Enum.map(fn a ->
-              %{a | features: Planner.list_features(user, a.id, workspace_id)}
-            end)
-
-          {:noreply,
-           socket
-           |> put_flash(:info, "Project deleted")
-           |> assign(apps_with_features: apps_with_features)}
+          {:noreply, socket}
         end
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           "Could not delete project: #{format_changeset_errors(cs)}"
+         )}
 
       _ ->
         {:noreply, socket |> put_flash(:error, "Could not delete project")}
@@ -2429,17 +2526,41 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
   @impl true
   def handle_event("toggle_inline_add", %{"status" => status}, socket) do
-    {:noreply, assign(socket, inline_add_status: status, inline_add_title: "")}
+    {:noreply,
+     assign(socket,
+       inline_add_status: status,
+       inline_add_title: "",
+       inline_add_assignee_id: "",
+       inline_add_due_date: "",
+       inline_add_icon: "pencil"
+     )}
   end
 
   @impl true
   def handle_event("cancel_inline_add", _, socket) do
     {:noreply,
-     assign(socket, inline_add_status: nil, inline_add_title: "", inline_add_icon: "pencil")}
+     assign(socket,
+       inline_add_status: nil,
+       inline_add_title: "",
+       inline_add_assignee_id: "",
+       inline_add_due_date: "",
+       inline_add_icon: "pencil"
+     )}
   end
 
   def handle_event("set_inline_icon", %{"icon" => icon}, socket) do
     {:noreply, assign(socket, :inline_add_icon, icon)}
+  end
+
+  @impl true
+  def handle_event("inline_add_draft", params, socket) do
+    {:noreply,
+     assign(socket,
+       inline_add_title: Map.get(params, "title", socket.assigns.inline_add_title),
+       inline_add_assignee_id:
+         Map.get(params, "assignee_id", socket.assigns.inline_add_assignee_id),
+       inline_add_due_date: Map.get(params, "due_date", socket.assigns.inline_add_due_date)
+     )}
   end
 
   @impl true
@@ -2463,11 +2584,24 @@ defmodule AppPlannerWeb.TaskLive.Index do
         # Clear title and close the form
         {:noreply,
          socket
-         |> assign(inline_add_title: "", inline_add_status: nil, inline_add_icon: "pencil")
+         |> assign(
+           inline_add_title: "",
+           inline_add_status: nil,
+           inline_add_assignee_id: "",
+           inline_add_due_date: "",
+           inline_add_icon: "pencil"
+         )
          |> fetch_tasks()}
 
       _ ->
-        {:noreply, socket |> put_flash(:error, "Could not create task")}
+        {:noreply,
+         socket
+         |> assign(
+           inline_add_title: params["title"] || socket.assigns.inline_add_title,
+           inline_add_assignee_id: params["assignee_id"] || socket.assigns.inline_add_assignee_id,
+           inline_add_due_date: params["due_date"] || socket.assigns.inline_add_due_date
+         )
+         |> put_flash(:error, "Could not create task (check required fields).")}
     end
   end
 
@@ -2479,24 +2613,36 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
     case Planner.delete_feature(feature) do
       {:ok, _} ->
-        if to_string(feature.id) == to_string(socket.assigns.feature.id) do
-          {:noreply,
-           socket
-           |> put_flash(:info, "Feature deleted")
-           |> push_navigate(to: ~p"/workspaces/#{workspace_id}/apps/#{feature.app_id}")}
-        else
-          # Reload sidebar
-          apps_with_features =
-            Planner.list_apps(user, workspace_id)
-            |> Enum.map(fn a ->
-              %{a | features: Planner.list_features(user, a.id, workspace_id)}
-            end)
+        # Always reload sidebar so the deleted feature disappears immediately.
+        apps_with_features =
+          Planner.list_apps(user, workspace_id)
+          |> Enum.map(fn a ->
+            %{a | features: Planner.list_features(user, a.id, workspace_id)}
+          end)
 
+        socket =
+          socket
+          |> put_flash(:info, "Feature deleted")
+          |> assign(apps_with_features: apps_with_features)
+
+        # If the deleted feature is the currently selected one, go back to the workspace board.
+        if socket.assigns[:feature] && to_string(feature.id) == to_string(socket.assigns.feature.id) do
           {:noreply,
            socket
-           |> put_flash(:info, "Feature deleted")
-           |> assign(apps_with_features: apps_with_features)}
+           |> assign(:feature, nil)
+           |> assign(:tasks_by_status, %{})
+           |> push_navigate(to: ~p"/workspaces/#{workspace_id}/board")}
+        else
+          {:noreply, socket}
         end
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           "Could not delete feature: #{format_changeset_errors(cs)}"
+         )}
 
       _ ->
         {:noreply, socket |> put_flash(:error, "Could not delete feature")}
@@ -2517,5 +2663,10 @@ defmodule AppPlannerWeb.TaskLive.Index do
       _ ->
         {:noreply, socket |> put_flash(:error, "Could not delete task")}
     end
+  end
+
+  defp format_changeset_errors(%Ecto.Changeset{errors: errors}) do
+    errors
+    |> Enum.map_join("; ", fn {field, {msg, _}} -> "#{field} #{msg}" end)
   end
 end

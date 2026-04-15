@@ -211,7 +211,7 @@ defmodule AppPlannerWeb.TaskLive.Form do
 
           <div class="space-y-4">
             <label class="text-[10px] font-black uppercase tracking-widest text-base-content/40 px-1">
-              Visual Marker
+              Icon
             </label>
             <div class="flex items-center gap-6 p-4 bg-base-100 rounded-lg border border-base-200">
               <div class="w-16 h-16 rounded-lg bg-primary/5 text-primary border border-primary/10 flex items-center justify-center shrink-0 shadow-sm">
@@ -290,7 +290,15 @@ defmodule AppPlannerWeb.TaskLive.Form do
 
   @impl true
   def handle_event("select-icon", %{"icon" => icon}, socket) do
-    {:noreply, assign(socket, :icon_preview, icon)}
+    cs =
+      socket.assigns.form.source
+      |> Ecto.Changeset.put_change(:icon, icon)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket
+     |> assign(:icon_preview, icon)
+     |> assign(:form, to_form(cs))}
   end
 
   @impl true

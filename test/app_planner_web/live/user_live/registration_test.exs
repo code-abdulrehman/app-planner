@@ -13,13 +13,10 @@ defmodule AppPlannerWeb.UserLive.RegistrationTest do
     end
 
     test "redirects if already logged in", %{conn: conn} do
-      result =
-        conn
-        |> log_in_user(user_fixture())
-        |> live(~p"/users/register")
-        |> follow_redirect(conn, ~p"/")
+      logged_in_conn = log_in_user(conn, user_fixture())
 
-      assert {:ok, _conn} = result
+      assert {:error, {:live_redirect, %{to: "/board"}}} =
+               live(logged_in_conn, ~p"/users/register")
     end
 
     test "renders errors for invalid data", %{conn: conn} do
@@ -40,14 +37,17 @@ defmodule AppPlannerWeb.UserLive.RegistrationTest do
       {:ok, lv, _html} = live(conn, ~p"/users/register")
 
       email = unique_user_email()
-      form = form(lv, "#registration_form", user: valid_user_attributes(email: email))
+
+      form =
+        form(lv, "#registration_form",
+          user: Map.merge(valid_user_attributes(email: email), %{password: valid_user_password()})
+        )
 
       {:ok, _lv, html} =
         render_submit(form)
         |> follow_redirect(conn, ~p"/users/log-in")
 
-      assert html =~
-               ~r/An email was sent to .*, please access it to confirm your account/
+      assert html =~ "Log in"
     end
 
     test "renders errors for duplicated email", %{conn: conn} do

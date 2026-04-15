@@ -43,6 +43,8 @@ defmodule AppPlannerWeb.Router do
   scope "/", AppPlannerWeb do
     pipe_through([:browser, :require_authenticated_user])
 
+    get("/workspaces/:workspace_id/apps", PageController, :redirect_workspace_apps)
+
     live_session :require_authenticated_user,
       on_mount: [
         {AppPlannerWeb.UserAuth, :require_authenticated},
@@ -62,7 +64,6 @@ defmodule AppPlannerWeb.Router do
       live("/workspaces/:workspace_id/board", TaskLive.Index, :index)
 
       scope "/workspaces/:workspace_id", as: :workspace do
-        live("/apps", AppLive.Index, :index)
         live("/apps/new", AppLive.Form, :new)
         live("/apps/:id", AppLive.Show, :show)
         live("/apps/:id/edit", AppLive.Form, :edit)

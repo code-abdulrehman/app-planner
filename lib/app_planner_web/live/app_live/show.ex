@@ -15,7 +15,7 @@ defmodule AppPlannerWeb.AppLive.Show do
         </.link>
         <span>/</span>
         <.link
-          navigate={~p"/workspaces/#{@current_workspace.id}/apps"}
+          navigate={~p"/workspaces/#{@current_workspace.id}"}
           class="hover:text-primary transition-colors"
         >
           Projects
@@ -78,7 +78,7 @@ defmodule AppPlannerWeb.AppLive.Show do
                   <.icon name="hero-rectangle-group" class="w-4 h-4 text-base-content/40" />
                 </div>
                 <h3 class="text-[10px] font-black uppercase tracking-widest text-base-content/60">
-                  Execution Modules
+                  Features
                 </h3>
               </div>
               <%= if @can_edit do %>
@@ -86,7 +86,7 @@ defmodule AppPlannerWeb.AppLive.Show do
                   navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@app.id}/features/new"}
                   class="text-[10px] font-black uppercase text-primary hover:underline underline-offset-4 tracking-widest"
                 >
-                  Add Module
+                  Add Feature
                 </.link>
               <% end %>
             </div>
@@ -116,7 +116,7 @@ defmodule AppPlannerWeb.AppLive.Show do
                   </div>
 
                   <p class="text-xs text-base-content/40 line-clamp-2 h-8 mb-6 font-medium leading-relaxed italic z-10 relative">
-                    {feature.description || "Module documentation draft."}
+                    {feature.description || "No summary yet."}
                   </p>
 
                   <div class="flex items-center justify-between pt-4 border-t border-base-50 mt-auto z-10 relative">
@@ -136,16 +136,16 @@ defmodule AppPlannerWeb.AppLive.Show do
                 <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 border border-base-200">
                   <.icon name="hero-sparkles" class="w-8 h-8 text-base-content/10" />
                 </div>
-                <h3 class="text-xl font-black tracking-tight mb-2">No modules yet</h3>
+                <h3 class="text-xl font-black tracking-tight mb-2">No features yet</h3>
                 <p class="text-sm text-base-content/40 font-medium max-w-xs mx-auto mb-8 italic">
-                  Define the core modules of your project to start planning the execution roadmap.
+                  Add features to break your project into clear, trackable parts.
                 </p>
                 <%= if @can_edit do %>
                   <.link
                     navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@app.id}/features/new"}
                     class="btn btn-primary btn-sm rounded-lg px-8 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20"
                   >
-                    Add Module
+                    Add Feature
                   </.link>
                 <% end %>
               </div>
@@ -243,7 +243,7 @@ defmodule AppPlannerWeb.AppLive.Show do
           {:ok,
            socket
            |> put_flash(:error, "App not found.")
-           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
+           |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}")}
 
         app ->
           can_edit = Workspaces.can_edit?(user, current_workspace) || Accounts.super_admin?(user)
@@ -268,7 +268,7 @@ defmodule AppPlannerWeb.AppLive.Show do
         {:noreply,
          socket
          |> put_flash(:info, "Project deleted")
-         |> push_navigate(to: ~p"/workspaces/#{socket.assigns.current_workspace.id}/apps")}
+         |> push_navigate(to: ~p"/workspaces/#{socket.assigns.current_workspace.id}")}
 
       _ ->
         {:noreply, socket |> put_flash(:error, "Could not terminate project")}
@@ -284,7 +284,7 @@ defmodule AppPlannerWeb.AppLive.Show do
     if app.id == id do
       case Planner.get_app(user, id, current_workspace.id) do
         nil ->
-          {:noreply, socket |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/apps")}
+          {:noreply, socket |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}")}
 
         updated_app ->
           {:noreply, assign(socket, app: updated_app)}

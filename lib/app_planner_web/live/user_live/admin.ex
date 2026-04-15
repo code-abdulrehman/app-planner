@@ -22,18 +22,30 @@ defmodule AppPlannerWeb.UserLive.Admin do
     <div class="max-w-6xl mx-auto py-12 px-6">
       <div class="mb-12">
         <h1 class="text-4xl font-black tracking-tight text-base-content mb-2">Admin – Users</h1>
-        <p class="text-sm text-base-content/40 font-medium italic">Manage system users and security.</p>
+        <p class="text-sm text-base-content/40 font-medium italic">
+          Manage system users and security.
+        </p>
       </div>
 
       <div class="bg-base-50/50 border border-base-200 rounded-lg overflow-hidden">
         <table class="table w-full">
           <thead>
             <tr class="bg-base-100 border-b border-base-200">
-              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">ID</th>
-              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">Email</th>
-              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">Full Name</th>
-              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">Role</th>
-              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">Actions</th>
+              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">
+                ID
+              </th>
+              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">
+                Email
+              </th>
+              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">
+                Full Name
+              </th>
+              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">
+                Role
+              </th>
+              <th class="text-[10px] font-black uppercase tracking-widest text-base-content/40 py-4 px-6">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-base-200">
@@ -43,30 +55,37 @@ defmodule AppPlannerWeb.UserLive.Admin do
                 <td class="py-4 px-6 font-bold text-sm">{user.email}</td>
                 <td class="py-4 px-6 text-sm text-base-content/60 italic">{user.full_name || "—"}</td>
                 <td class="py-4 px-6">
-                  <span class={[user.role == "super_admin" && "badge badge-primary badge-sm font-black uppercase text-[8px] tracking-widest rounded-md", user.role != "super_admin" && "badge badge-ghost badge-sm font-black uppercase text-[8px] tracking-widest rounded-md border-base-200 opacity-60"]}>{user.role}</span>
+                  <span class={[
+                    user.role == "super_admin" &&
+                      "badge badge-primary badge-sm font-black uppercase text-[8px] tracking-widest rounded-md",
+                    user.role != "super_admin" &&
+                      "badge badge-ghost badge-sm font-black uppercase text-[8px] tracking-widest rounded-md border-base-200 opacity-60"
+                  ]}>
+                    {user.role}
+                  </span>
                 </td>
                 <td class="py-4 px-6">
-                   <div class="flex gap-2">
+                  <div class="flex gap-2">
+                    <button
+                      type="button"
+                      phx-click="change-password"
+                      phx-value-id={user.id}
+                      class="btn btn-ghost btn-xs rounded-md font-black uppercase text-[9px] tracking-widest hover:bg-primary/5 hover:text-primary"
+                    >
+                      Change Password
+                    </button>
+                    <%= if user.role != "super_admin" do %>
                       <button
                         type="button"
-                        phx-click="change-password"
+                        phx-click="delete-user"
                         phx-value-id={user.id}
-                        class="btn btn-ghost btn-xs rounded-md font-black uppercase text-[9px] tracking-widest hover:bg-primary/5 hover:text-primary"
+                        data-confirm="Delete this user? This cannot be undone."
+                        class="btn btn-ghost btn-xs rounded-md font-black uppercase text-[9px] tracking-widest text-error hover:bg-error/5"
                       >
-                        Change Password
+                        Delete
                       </button>
-                      <%= if user.role != "super_admin" do %>
-                        <button
-                          type="button"
-                          phx-click="delete-user"
-                          phx-value-id={user.id}
-                          data-confirm="Delete this user? This cannot be undone."
-                          class="btn btn-ghost btn-xs rounded-md font-black uppercase text-[9px] tracking-widest text-error hover:bg-error/5"
-                        >
-                          Delete
-                        </button>
-                      <% end %>
-                   </div>
+                    <% end %>
+                  </div>
                 </td>
               </tr>
             <% end %>
@@ -78,25 +97,63 @@ defmodule AppPlannerWeb.UserLive.Admin do
         <div class="modal modal-open backdrop-blur-sm">
           <div class="modal-box rounded-lg border border-base-200 p-8">
             <h3 class="font-black text-xl tracking-tight mb-2">Change password</h3>
-            <p class="text-[10px] font-black uppercase tracking-widest text-base-content/40 mb-8 pb-4 border-b border-base-200">User: {@editing_password_for.email}</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-base-content/40 mb-8 pb-4 border-b border-base-200">
+              User: {@editing_password_for.email}
+            </p>
 
-            <.form for={@password_form} id="admin_password_form" phx-submit="save_password" phx-change="validate_password" class="space-y-6">
+            <.form
+              for={@password_form}
+              id="admin_password_form"
+              phx-submit="save_password"
+              phx-change="validate_password"
+              class="space-y-6"
+            >
               <div class="form-control">
-                 <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">New Password</span></label>
-                 <.input field={@password_form[:password]} type="password" required class="input input-bordered w-full rounded-lg bg-base-100 font-bold" />
+                <label class="label">
+                  <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                    New Password
+                  </span>
+                </label>
+                <.input
+                  field={@password_form[:password]}
+                  type="password"
+                  required
+                  class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+                />
               </div>
               <div class="form-control">
-                 <label class="label"><span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">Confirm Password</span></label>
-                 <.input field={@password_form[:password_confirmation]} type="password" required class="input input-bordered w-full rounded-lg bg-base-100 font-bold" />
+                <label class="label">
+                  <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                    Confirm Password
+                  </span>
+                </label>
+                <.input
+                  field={@password_form[:password_confirmation]}
+                  type="password"
+                  required
+                  class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
+                />
               </div>
 
               <div class="flex justify-end gap-3 pt-6">
-                <button type="button" phx-click="cancel-password" class="btn btn-ghost rounded-lg text-[10px] font-black uppercase tracking-widest border border-base-200 px-6">Cancel</button>
-                <button type="submit" class="btn btn-primary rounded-lg text-[10px] font-black uppercase tracking-widest px-8 shadow-lg shadow-primary/20">Save</button>
+                <button
+                  type="button"
+                  phx-click="cancel-password"
+                  class="btn btn-ghost rounded-lg text-[10px] font-black uppercase tracking-widest border border-base-200 px-6"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-primary rounded-lg text-[10px] font-black uppercase tracking-widest px-8 shadow-lg shadow-primary/20"
+                >
+                  Save
+                </button>
               </div>
             </.form>
           </div>
-          <div class="modal-backdrop bg-base-content/40 cursor-default" phx-click="cancel-password"></div>
+          <div class="modal-backdrop bg-base-content/40 cursor-default" phx-click="cancel-password">
+          </div>
         </div>
       <% end %>
     </div>

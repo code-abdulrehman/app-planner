@@ -21,41 +21,59 @@ defmodule AppPlannerWeb.Layouts do
     <div class="min-h-screen bg-base-100 flex flex-col transition-colors duration-300">
       <header class="h-14 border-b border-base-200 bg-base-100/80 backdrop-blur-md shrink-0 flex items-center justify-between px-6 sticky top-0 z-40">
         <div class="flex items-center gap-4">
-           <.link navigate={~p"/workspaces"} class="flex items-center gap-2 group">
-              <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-content font-black text-sm shadow-sm group-hover:-rotate-20 transition-transform">
-                 <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
+          <.link navigate={~p"/workspaces"} class="flex items-center gap-2 group">
+            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-content font-black text-sm shadow-sm group-hover:-rotate-20 transition-transform">
+              <.icon name="hero-cursor-arrow-ripple" class="w-4 h-4" />
+            </div>
+            <span class="font-black tracking-tighter text-lg text-base-content">AppPlanner</span>
+          </.link>
+          <div class="flex items-center gap-3 ml-4 pl-4 border-l border-base-200">
+            <AppPlannerWeb.WorkspaceSelector.workspace_selector
+              :if={@current_scope && @current_scope.user}
+              current_user={@current_scope.user}
+              current_workspace={@current_workspace}
+            />
           </div>
-              <span class="font-black tracking-tighter text-lg text-base-content">AppPlanner</span>
-           </.link>
-           <div class="flex items-center gap-3 ml-4 pl-4 border-l border-base-200">
-              <AppPlannerWeb.WorkspaceSelector.workspace_selector
-                :if={@current_scope && @current_scope.user}
-                current_user={@current_scope.user}
-                current_workspace={@current_workspace}
-              />
-           </div>
         </div>
 
         <div class="flex items-center gap-6">
-           <.theme_toggle />
+          <.theme_toggle />
 
-           <div class="dropdown dropdown-end">
-              <label tabindex="0" class="btn btn-ghost btn-circle btn-sm avatar flex items-center justify-center border bg-base-300 rounded-full">
-                 <div class="w-8 h-5 rounded-lg flex items-center justify-center text-base-content/60 font-black text-xs border border-base-300 shadow-inner">
-                   <%= if @current_scope && @current_scope.user do %>
-                     {String.at(@current_scope.user.email, 0) |> String.upcase()}
-                   <% else %>
-                     <.icon name="hero-user" class="w-4 h-4" />
-                   <% end %>
-                 </div>
-              </label>
-              <ul tabindex="0" class="mt-2 z-[1] p-1 shadow-xl menu menu-sm dropdown-content bg-base-100 rounded-lg w-52 border border-base-200">
-                <li><.link navigate={~p"/workspaces"} class="py-2.5 font-bold text-base-content/70"><.icon name="hero-rectangle-stack" class="w-4 h-4 mr-2" /> Workspaces</.link></li>
-                <li><.link navigate={~p"/users/settings"} class="py-2.5 font-bold text-base-content/70"><.icon name="hero-cog-8-tooth" class="w-4 h-4 mr-2" /> Settings</.link></li>
-                <div class="divider my-0 opacity-10"></div>
-                <li><.link href={~p"/users/log-out"} method="delete" class="py-2.5 font-bold text-error"><.icon name="hero-arrow-right-start-on-rectangle" class="w-4 h-4 mr-2" /> Sign Out</.link></li>
-              </ul>
-           </div>
+          <div class="dropdown dropdown-end">
+            <label
+              tabindex="0"
+              class="btn btn-ghost btn-circle btn-sm avatar flex items-center justify-center border bg-base-300 rounded-full"
+            >
+              <div class="w-8 h-5 rounded-lg flex items-center justify-center text-base-content/60 font-black text-xs border border-base-300 shadow-inner">
+                <%= if @current_scope && @current_scope.user do %>
+                  {String.at(@current_scope.user.email, 0) |> String.upcase()}
+                <% else %>
+                  <.icon name="hero-user" class="w-4 h-4" />
+                <% end %>
+              </div>
+            </label>
+            <ul
+              tabindex="0"
+              class="mt-2 z-[1] p-1 shadow-xl menu menu-sm dropdown-content bg-base-100 rounded-lg w-52 border border-base-200"
+            >
+              <li>
+                <.link navigate={~p"/workspaces"} class="py-2.5 font-bold text-base-content/70">
+                  <.icon name="hero-rectangle-stack" class="w-4 h-4 mr-2" /> Workspaces
+                </.link>
+              </li>
+              <li>
+                <.link navigate={~p"/users/settings"} class="py-2.5 font-bold text-base-content/70">
+                  <.icon name="hero-cog-8-tooth" class="w-4 h-4 mr-2" /> Settings
+                </.link>
+              </li>
+              <div class="divider my-0 opacity-10"></div>
+              <li>
+                <.link href={~p"/users/log-out"} method="delete" class="py-2.5 font-bold text-error">
+                  <.icon name="hero-arrow-right-start-on-rectangle" class="w-4 h-4 mr-2" /> Sign Out
+                </.link>
+              </li>
+            </ul>
+          </div>
         </div>
       </header>
 

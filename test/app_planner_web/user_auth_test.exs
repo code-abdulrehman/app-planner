@@ -25,7 +25,7 @@ defmodule AppPlannerWeb.UserAuthTest do
       conn = UserAuth.log_in_user(conn, user)
       assert token = get_session(conn, :user_token)
       assert get_session(conn, :live_socket_id) == "users_sessions:#{Base.url_encode64(token)}"
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/board"
       assert Accounts.get_user_by_session_token(token)
     end
 
@@ -80,7 +80,7 @@ defmodule AppPlannerWeb.UserAuthTest do
         |> assign(:current_scope, Scope.for_user(user))
         |> UserAuth.log_in_user(user)
 
-      assert redirected_to(conn) == ~p"/users/settings"
+      assert redirected_to(conn) == ~p"/board"
     end
 
     test "writes a cookie if remember_me was set in previous session", %{conn: conn, user: user} do
@@ -180,7 +180,7 @@ defmodule AppPlannerWeb.UserAuthTest do
       _ = Accounts.generate_user_session_token(user)
       conn = UserAuth.fetch_current_scope_for_user(conn, [])
       refute get_session(conn, :user_token)
-      refute conn.assigns.current_scope
+      refute conn.assigns.current_scope.user
     end
 
     test "reissues a new token after a few days and refreshes cookie", %{conn: conn, user: user} do
@@ -232,7 +232,7 @@ defmodule AppPlannerWeb.UserAuthTest do
       {:cont, updated_socket} =
         UserAuth.on_mount(:mount_current_scope, %{}, session, %LiveView.Socket{})
 
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope == Scope.for_user(nil)
     end
 
     test "assigns nil to current_scope assign if there isn't a user_token", %{conn: conn} do
@@ -241,7 +241,7 @@ defmodule AppPlannerWeb.UserAuthTest do
       {:cont, updated_socket} =
         UserAuth.on_mount(:mount_current_scope, %{}, session, %LiveView.Socket{})
 
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope == Scope.for_user(nil)
     end
   end
 
@@ -266,7 +266,7 @@ defmodule AppPlannerWeb.UserAuthTest do
       }
 
       {:halt, updated_socket} = UserAuth.on_mount(:require_authenticated, %{}, session, socket)
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope == Scope.for_user(nil)
     end
 
     test "redirects to login page if there isn't a user_token", %{conn: conn} do
@@ -278,7 +278,7 @@ defmodule AppPlannerWeb.UserAuthTest do
       }
 
       {:halt, updated_socket} = UserAuth.on_mount(:require_authenticated, %{}, session, socket)
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope == Scope.for_user(nil)
     end
   end
 

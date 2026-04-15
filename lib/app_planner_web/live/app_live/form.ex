@@ -4,6 +4,7 @@ defmodule AppPlannerWeb.AppLive.Form do
   alias AppPlanner.Planner
   alias AppPlanner.Planner.App
   alias AppPlannerWeb.IconHelper
+  alias AppPlannerWeb.ScopeFromPath
 
   @impl true
   def render(assigns) do
@@ -13,7 +14,7 @@ defmodule AppPlannerWeb.AppLive.Form do
         <div>
           <div class="flex items-center gap-2 text-[10px] font-black uppercase text-base-content/30 tracking-widest mb-2">
             <.link
-              navigate={~p"/workspaces/#{@current_workspace.id}/apps"}
+              navigate={~p"/workspaces/#{@current_workspace.id}"}
               class="hover:text-primary transition-colors"
             >
               Projects
@@ -32,7 +33,13 @@ defmodule AppPlannerWeb.AppLive.Form do
         </.link>
       </div>
 
-      <.form for={@form} id="app-form" phx-change="validate" phx-submit="save" class="space-y-6">
+      <.form
+        for={@form}
+        id={"app-form-#{@app.id || "new"}"}
+        phx-change="validate"
+        phx-submit="save"
+        class="space-y-6"
+      >
         <div class="bg-base-50/50 border border-base-200 rounded-lg p-6 space-y-6">
           <div class="form-control">
             <label class="label">
@@ -43,6 +50,7 @@ defmodule AppPlannerWeb.AppLive.Form do
             <.input
               field={@form[:name]}
               type="text"
+              value={@app.name}
               placeholder="Enter project name"
               required
               class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
@@ -58,6 +66,7 @@ defmodule AppPlannerWeb.AppLive.Form do
             <.input
               field={@form[:status]}
               type="select"
+              value={@app.status}
               options={["Idea", "Planned", "In Progress", "Completed", "Archived"]}
               class="select select-bordered w-full rounded-lg bg-base-100 font-bold"
             />
@@ -67,12 +76,14 @@ defmodule AppPlannerWeb.AppLive.Form do
             <label class="label">
               <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
                 Description
+                <span class="font-normal normal-case text-base-content/35">(optional)</span>
               </span>
             </label>
             <.input
               field={@form[:description]}
               type="textarea"
               rows={4}
+              value={@app.description}
               placeholder="Provide a brief overview of this project"
               class="textarea textarea-bordered w-full rounded-lg bg-base-100 font-bold leading-relaxed"
             />
@@ -145,8 +156,8 @@ defmodule AppPlannerWeb.AppLive.Form do
 
   @impl true
   def mount(params, _session, socket) do
-    user = socket.assigns.current_scope.user
     workspace = socket.assigns.current_workspace
+    user = socket.assigns.current_scope.user
 
     socket =
       socket
@@ -154,32 +165,110 @@ defmodule AppPlannerWeb.AppLive.Form do
       |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 18))
       |> assign(:current_workspace, workspace)
 
-    {:ok, apply_action(socket, socket.assigns.live_action, params, user, workspace)}
+    socket =
+      # `live_action` isn't reliably set during the disconnected mount render.
+      # If an id is present, treat it as edit so the first render includes values.
+      if is_binary(params["id"]) do
+        app = Planner.get_app!(params["id"], user, workspace.id)
+        changeset =
+          Planner.change_app(app, %{
+            "name" => app.name,
+            "description" => app.description,
+            "status" => app.status,
+            "workspace_id" => app.workspace_id,
+            "icon" => app.icon
+          })
+
+        if Mix.env() == :dev do
+          IO.inspect(%{params: params, app: app, changeset: changeset}, label: "AppLive.Form mount/edit")
+        end
+
+        socket
+        |> assign(:page_title, "Update Roadmap")
+        |> assign(:app, app)
+        |> assign(:icon_preview, app.icon)
+        |> assign(:form, to_form(changeset))
+      else
+        if Mix.env() == :dev do
+          IO.inspect(%{params: params, live_action: socket.assigns.live_action}, label: "AppLive.Form mount/non-edit")
+        end
+
+        socket
+      end
+
+    {:ok,
+     socket}
   end
 
-  defp apply_action(socket, :edit, %{"id" => id}, user, workspace) do
-    app = Planner.get_app!(id, user, workspace.id)
+  @impl true
+  def handle_params(params, url, socket) do
+    params = ScopeFromPath.merge_scoped_params(params, url)
+    socket = ScopeFromPath.align_current_workspace(socket, params)
+    user = socket.assigns.current_scope.user
+    workspace = socket.assigns.current_workspace
 
-    socket
-    |> assign(:page_title, "Update Roadmap")
-    |> assign(:app, app)
-    |> assign(:icon_preview, app.icon)
-    |> assign(:form, to_form(Planner.change_app(app)))
+    if Mix.env() == :dev do
+      IO.inspect(%{params: params, url: url, live_action: socket.assigns.live_action}, label: "AppLive.Form handle_params")
+    end
+
+    {:noreply, apply_action(socket, socket.assigns.live_action, params, user, workspace)}
   end
 
-  defp apply_action(socket, :new, _params, _user, _workspace) do
+  defp apply_action(socket, :edit, params, user, workspace) do
+    case Map.get(params, "id") do
+      nil ->
+        socket
+        |> put_flash(:error, "Missing project id.")
+        |> push_navigate(to: ~p"/workspaces/#{workspace.id}/board")
+
+      id ->
+        app = Planner.get_app!(id, user, workspace.id)
+        changeset =
+          Planner.change_app(app, %{
+            "name" => app.name,
+            "description" => app.description,
+            "status" => app.status,
+            "workspace_id" => app.workspace_id,
+            "icon" => app.icon
+          })
+
+        if Mix.env() == :dev do
+          IO.inspect(%{params: params, app: app, changeset: changeset}, label: "AppLive.Form apply_action/edit")
+        end
+
+        socket
+        |> assign(:page_title, "Update Roadmap")
+        |> assign(:app, app)
+        |> assign(:icon_preview, app.icon)
+        |> assign(:form, to_form(changeset))
+    end
+  end
+
+  defp apply_action(socket, :new, _params, _user, workspace) do
     app = %App{}
+    wid = to_string(workspace.id)
+
+    changeset =
+      Planner.change_app(app, %{
+        "name" => "",
+        "description" => "",
+        "status" => "Idea",
+        "workspace_id" => wid
+      })
 
     socket
     |> assign(:page_title, "New Project")
     |> assign(:app, app)
     |> assign(:icon_preview, nil)
-    |> assign(:form, to_form(Planner.change_app(app)))
+    |> assign(:form, to_form(changeset))
   end
 
   @impl true
   def handle_event("validate", %{"app" => app_params}, socket) do
-    app_params = Map.put(app_params, "icon", socket.assigns.icon_preview)
+    app_params =
+      app_params
+      |> Map.put("icon", socket.assigns.icon_preview)
+      |> ensure_app_workspace_params(socket)
 
     changeset =
       socket.assigns.app
@@ -203,13 +292,41 @@ defmodule AppPlannerWeb.AppLive.Form do
 
   @impl true
   def handle_event("select-icon", %{"icon" => icon}, socket) do
-    {:noreply, assign(socket, icon_preview: icon)}
+    cs =
+      socket.assigns.form.source
+      |> Ecto.Changeset.put_change(:icon, icon)
+      |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket
+     |> assign(:icon_preview, icon)
+     |> assign(:form, to_form(cs))}
   end
 
   @impl true
   def handle_event("save", %{"app" => app_params}, socket) do
-    app_params = Map.put(app_params, "icon", socket.assigns.icon_preview)
+    app_params =
+      app_params
+      |> Map.put("icon", socket.assigns.icon_preview)
+      |> ensure_app_workspace_params(socket)
+
     save_app(socket, socket.assigns.live_action, app_params)
+  end
+
+  defp ensure_app_workspace_params(params, socket) do
+    wid = socket.assigns.current_workspace.id
+    app = socket.assigns.app
+
+    cond do
+      match?(%App{id: nil}, app) ->
+        Map.put(params, "workspace_id", to_string(wid))
+
+      app.workspace_id != nil ->
+        Map.put(params, "workspace_id", to_string(app.workspace_id))
+
+      true ->
+        Map.put(params, "workspace_id", to_string(wid))
+    end
   end
 
   defp save_app(socket, :edit, app_params) do
@@ -246,6 +363,6 @@ defmodule AppPlannerWeb.AppLive.Form do
   defp return_path(app, workspace) do
     if app.id,
       do: ~p"/workspaces/#{workspace.id}/apps/#{app.id}",
-      else: ~p"/workspaces/#{workspace.id}/apps"
+      else: ~p"/workspaces/#{workspace.id}"
   end
 end
