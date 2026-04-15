@@ -10,7 +10,7 @@ defmodule AppPlannerWeb.FeatureLive.Index do
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
         <div>
           <h1 class="text-4xl font-black tracking-tight text-base-content mb-2">
-            {if @app, do: @app.name, else: "All Modules"}
+            {if @app, do: @app.name, else: "All Features"}
           </h1>
           <div class="flex items-center gap-3">
             <span class="w-2 h-2 rounded-full bg-primary"></span>
@@ -28,7 +28,7 @@ defmodule AppPlannerWeb.FeatureLive.Index do
           class="btn btn-primary rounded-lg px-8 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20"
         >
           <div class="flex items-center gap-2">
-            <.icon name="hero-plus" class="w-4 h-4" /> Add Module
+            <.icon name="hero-plus" class="w-4 h-4" /> Add Feature
           </div>
         </.link>
       </div>
@@ -80,7 +80,7 @@ defmodule AppPlannerWeb.FeatureLive.Index do
             </.link>
             <button
               phx-click={JS.push("delete", value: %{id: feature.id}) |> hide("##{id}")}
-              data-confirm="Delete this module?"
+              data-confirm="Delete this feature?"
               class="btn btn-ghost btn-xs rounded-md border border-base-200 text-error hover:bg-error/5"
             >
               <.icon name="hero-trash" class="w-3.5 h-3.5" />
@@ -144,7 +144,7 @@ defmodule AppPlannerWeb.FeatureLive.Index do
         {:noreply, stream_delete(socket, :features, feature)}
 
       _ ->
-        {:noreply, socket |> put_flash(:error, "Could not delete module")}
+        {:noreply, socket |> put_flash(:error, "Could not delete feature")}
     end
   end
 end

@@ -9,7 +9,7 @@ defmodule AppPlannerWeb.WorkspaceSelector do
   alias AppPlannerWeb.ScopeFromPath
 
   def on_mount(:load_current_workspace, params, _session, socket) do
-    params = ScopeFromPath.merge_scoped_params(params, nil, socket)
+    params = ScopeFromPath.merge_scoped_params(params, nil)
 
     workspace_id = params["workspace_id"] || params["id"]
 

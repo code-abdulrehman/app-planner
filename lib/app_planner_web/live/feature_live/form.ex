@@ -14,7 +14,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         <div>
           <div class="flex items-center gap-2 text-[10px] font-black uppercase text-base-content/30 tracking-widest mb-2">
             <.link
-              :if={@feature.app_id}
+              :if={@feature.app_id && @feature.app}
               navigate={~p"/workspaces/#{@current_workspace.id}/apps/#{@feature.app_id}"}
               class="hover:text-primary transition-colors"
             >
@@ -34,19 +34,26 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         </.link>
       </div>
 
-      <.form for={@form} id="feature-form" phx-change="validate" phx-submit="save" class="space-y-6">
+      <.form
+        for={@form}
+        id={"feature-form-#{@feature.id || "new"}"}
+        phx-change="validate"
+        phx-submit="save"
+        class="space-y-6"
+      >
         <div class="bg-base-50/50 border border-base-200 rounded-lg p-6 space-y-6">
           <!-- Title Section -->
           <div class="form-control">
             <label class="label">
               <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Module Title
+                Feature Title
               </span>
             </label>
             <.input
               field={@form[:title]}
               type="text"
-              placeholder="Name this module"
+              value={@feature.title}
+              placeholder="Name this feature"
               required
               class="input input-bordered w-full rounded-lg bg-base-100 font-bold"
             />
@@ -55,7 +62,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
           <div class="form-control">
             <label class="label">
               <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Parent Project
+                Project
               </span>
             </label>
             <div :if={!@feature.app_id}>
@@ -71,7 +78,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
               :if={@feature.app_id}
               class="input input-bordered bg-base-200/50 flex items-center rounded-lg font-bold text-sm text-base-content/60 border-dashed"
             >
-              {@feature.app.name}
+              {if @feature.app, do: @feature.app.name, else: ""}
               <input type="hidden" name="feature[app_id]" value={@feature.app_id} />
             </div>
           </div>
@@ -79,22 +86,23 @@ defmodule AppPlannerWeb.FeatureLive.Form do
           <div class="form-control">
             <label class="label">
               <span class="label-text text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Summary
+                Summary <span class="font-normal normal-case text-base-content/35">(optional)</span>
               </span>
             </label>
             <.input
               field={@form[:description]}
               type="textarea"
               rows={4}
-              placeholder="Module purpose and scope..."
+              value={@feature.description}
+              placeholder="What’s included in this feature?"
               class="textarea textarea-bordered w-full rounded-lg bg-base-100 font-bold leading-relaxed"
             />
           </div>
-          
+
     <!-- Icon Selection -->
           <div class="space-y-4">
             <label class="text-[10px] font-black uppercase tracking-widest text-base-content/40 px-1">
-              Visual Marker
+              Icon
             </label>
             <div class="flex items-center gap-6 p-4 bg-base-100 rounded-lg border border-base-200">
               <div class="w-16 h-16 rounded-lg bg-primary/5 text-primary border border-primary/10 flex items-center justify-center shrink-0 shadow-sm">
@@ -149,7 +157,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
             phx-disable-with="Saving..."
             class="btn btn-primary rounded-lg text-[10px] font-black uppercase tracking-widest px-10 shadow-lg shadow-primary/20"
           >
-            {if @live_action == :new, do: "Save Module", else: "Save"}
+            {if @live_action == :new, do: "Save Feature", else: "Save"}
           </button>
         </div>
       </.form>
@@ -158,25 +166,70 @@ defmodule AppPlannerWeb.FeatureLive.Form do
   end
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     current_workspace = socket.assigns.current_workspace
+    user = socket.assigns.current_scope.user
+
+    socket =
+      socket
+      |> assign(:return_to, "app")
+      |> assign(:icon_search, "")
+      |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 20))
+      |> assign(:current_workspace, current_workspace)
+
+    socket =
+      # `live_action` isn't reliably set during the disconnected mount render.
+      # If an id is present, treat it as edit so the first render includes values.
+      if is_binary(params["id"]) do
+        feature = Planner.get_feature!(params["id"], user, current_workspace.id)
+        app = Planner.get_app!(feature.app_id, user, current_workspace.id)
+        feature = %{feature | app: app}
+        apps = Planner.list_apps(user, current_workspace.id)
+        changeset =
+          Planner.change_feature(feature, %{
+            "title" => feature.title,
+            "description" => feature.description,
+            "app_id" => feature.app_id,
+            "icon" => feature.icon
+          })
+
+        if Mix.env() == :dev do
+          IO.inspect(
+            %{params: params, feature: feature, changeset: changeset},
+            label: "FeatureLive.Form mount/edit"
+          )
+        end
+
+        socket
+        |> assign(:apps, apps)
+        |> assign(:page_title, "Update Feature")
+        |> assign(:feature, feature)
+        |> assign(:icon_preview, feature.icon)
+        |> assign(:form, to_form(changeset))
+      else
+        if Mix.env() == :dev do
+          IO.inspect(%{params: params, live_action: socket.assigns.live_action}, label: "FeatureLive.Form mount/non-edit")
+        end
+
+        socket
+      end
 
     {:ok,
-     socket
-     |> assign(:return_to, "app")
-     |> assign(:icon_search, "")
-     |> assign(:filtered_icons, Enum.take(IconHelper.icons(), 20))
-     |> assign(:current_workspace, current_workspace)}
+     socket}
   end
 
   @impl true
   def handle_params(params, url, socket) do
-    params = ScopeFromPath.merge_scoped_params(params, url, socket)
+    params = ScopeFromPath.merge_scoped_params(params, url)
     socket = ScopeFromPath.align_current_workspace(socket, params)
     current_workspace = socket.assigns.current_workspace
     return_to = params["return_to"] || socket.assigns.return_to || "app"
     user = socket.assigns.current_scope.user
     apps = Planner.list_apps(user, current_workspace.id)
+
+    if Mix.env() == :dev do
+      IO.inspect(%{params: params, url: url, live_action: socket.assigns.live_action}, label: "FeatureLive.Form handle_params")
+    end
 
     socket =
       socket
@@ -192,18 +245,33 @@ defmodule AppPlannerWeb.FeatureLive.Form do
     case Map.get(params, "id") do
       nil ->
         socket
-        |> put_flash(:error, "Missing module id.")
+        |> put_flash(:error, "Missing feature id.")
         |> push_navigate(to: ~p"/workspaces/#{current_workspace.id}/board")
 
       id ->
         feature = Planner.get_feature!(id, user, current_workspace.id)
         app = Planner.get_app!(feature.app_id, user, current_workspace.id)
+        feature = %{feature | app: app}
+        changeset =
+          Planner.change_feature(feature, %{
+            "title" => feature.title,
+            "description" => feature.description,
+            "app_id" => feature.app_id,
+            "icon" => feature.icon
+          })
+
+        if Mix.env() == :dev do
+          IO.inspect(
+            %{params: params, feature: feature, changeset: changeset},
+            label: "FeatureLive.Form apply_action/edit"
+          )
+        end
 
         socket
-        |> assign(:page_title, "Update Module")
-        |> assign(:feature, %{feature | app: app})
+        |> assign(:page_title, "Update Feature")
+        |> assign(:feature, feature)
         |> assign(:icon_preview, feature.icon)
-        |> assign(:form, to_form(Planner.change_feature(feature)))
+        |> assign(:form, to_form(changeset))
     end
   end
 
@@ -221,7 +289,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
         else: feature
 
     socket
-    |> assign(:page_title, "New Module")
+    |> assign(:page_title, "New Feature")
     |> assign(:feature, feature)
     |> assign(:icon_preview, nil)
     |> assign(:form, to_form(Planner.change_feature(feature)))
@@ -296,7 +364,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
       {:ok, _feature} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Module saved successfully")
+         |> put_flash(:info, "Feature saved successfully")
          |> push_navigate(to: ~p"/workspaces/#{socket.assigns.current_workspace.id}/board")}
 
       {:error, changeset} ->
@@ -311,7 +379,7 @@ defmodule AppPlannerWeb.FeatureLive.Form do
       {:ok, _feature} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Module created successfully")
+         |> put_flash(:info, "Feature created successfully")
          |> push_navigate(to: ~p"/workspaces/#{socket.assigns.current_workspace.id}/board")}
 
       {:error, changeset} ->

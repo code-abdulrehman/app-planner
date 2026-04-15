@@ -325,7 +325,7 @@ defmodule AppPlannerWeb.AppLive.Export do
                   <%= if length(child.features) > 0 do %>
                     <div class="space-y-8 pl-8 border-l-4 border-slate-50">
                       <h4 class="text-xs font-black uppercase tracking-[0.4em] text-slate-400">
-                        System Modules & Features
+                        System Features
                       </h4>
 
                       <div class="grid grid-cols-1 gap-12">

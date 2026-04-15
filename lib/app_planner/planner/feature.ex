@@ -27,6 +27,6 @@ defmodule AppPlanner.Planner.Feature do
       :user_id,
       :last_updated_by_id
     ])
-    |> validate_required([:title, :description, :user_id, :app_id])
+    |> validate_required([:title, :user_id, :app_id])
   end
 end

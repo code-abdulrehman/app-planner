@@ -7,7 +7,8 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
   @impl true
   def mount(params, _session, socket) do
-    params = ScopeFromPath.merge_scoped_params(params, nil, socket)
+    uri = mount_connect_uri(socket)
+    params = ScopeFromPath.merge_scoped_params(params, uri)
     socket = ScopeFromPath.align_current_workspace(socket, params)
     user = socket.assigns.current_scope.user
     current_workspace = socket.assigns.current_workspace
@@ -123,6 +124,17 @@ defmodule AppPlannerWeb.TaskLive.Index do
     end
   end
 
+  defp mount_connect_uri(socket) do
+    if Phoenix.LiveView.connected?(socket) do
+      case Phoenix.LiveView.get_connect_info(socket, :uri) do
+        %URI{} = u -> u
+        _ -> nil
+      end
+    else
+      nil
+    end
+  end
+
   defp assign_metadata(socket, user, current_workspace, params) do
     workspace_id = params["workspace_id"]
     app_id = params["app_id"]
@@ -198,7 +210,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
   @impl true
   def handle_params(params, url, socket) do
     user = socket.assigns.current_scope.user
-    params = ScopeFromPath.merge_scoped_params(params, url, socket)
+    params = ScopeFromPath.merge_scoped_params(params, url)
     socket = ScopeFromPath.align_current_workspace(socket, params)
     current_workspace = socket.assigns.current_workspace
 
@@ -410,7 +422,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                           <button
                             phx-click="delete_feature"
                             phx-value-id={f.id}
-                            data-confirm="Delete this module?"
+                            data-confirm="Delete this feature?"
                             class="text-error hover:bg-error/5"
                           >
                             <.icon name="hero-trash" class="w-3 h-3" /> Delete
@@ -424,7 +436,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   navigate={~p"/workspaces/#{@workspace_id}/apps/#{a.id}/features/new"}
                   class="flex items-center gap-2.5 px-3 py-2 text-[9px] font-bold text-base-content/30 hover:text-primary transition-colors pl-4"
                 >
-                  <.icon name="hero-plus-circle" class="w-3.5 h-3.5" /> Add Module
+                  <.icon name="hero-plus-circle" class="w-3.5 h-3.5" /> Add Feature
                 </.link>
               </div>
             </div>
@@ -465,7 +477,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
 
               <div :if={!(@app && @feature)} class="hidden md:flex items-center gap-2">
                 <div class="text-[10px] font-bold text-base-content/30">
-                  Select a module from the sidebar
+                  Select a feature from the sidebar
                 </div>
               </div>
               
@@ -503,7 +515,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                   Select Task
                 </h3>
                 <p class="text-[11px] text-base-content/40 font-bold uppercase tracking-widest mb-10 px-12 leading-relaxed italic">
-                  Select a project and its specific module from the sidebar to visualize the board.
+                  Select a project and feature from the sidebar to view the board.
                 </p>
                 <div class="flex items-center justify-center gap-6">
                   <div class="flex flex-col items-center gap-2">
@@ -520,7 +532,7 @@ defmodule AppPlannerWeb.TaskLive.Index do
                       2
                     </div>
                     <span class="text-[9px] font-bold text-base-content/40 uppercase tracking-wider">
-                      Module Board
+                      Feature Board
                     </span>
                   </div>
                 </div>
@@ -2619,11 +2631,11 @@ defmodule AppPlannerWeb.TaskLive.Index do
          socket
          |> put_flash(
            :error,
-           "Could not delete module: #{format_changeset_errors(cs)}"
+           "Could not delete feature: #{format_changeset_errors(cs)}"
          )}
 
       _ ->
-        {:noreply, socket |> put_flash(:error, "Could not delete module")}
+        {:noreply, socket |> put_flash(:error, "Could not delete feature")}
     end
   end
 

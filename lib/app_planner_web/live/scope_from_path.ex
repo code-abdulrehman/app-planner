@@ -10,20 +10,19 @@ defmodule AppPlannerWeb.ScopeFromPath do
 
   @spec merge_scoped_params(map()) :: map()
   def merge_scoped_params(params) when is_map(params) do
-    merge_scoped_params(params, nil, nil)
+    merge_scoped_params(params, nil)
   end
 
+  @doc """
+  Merges route params with ids parsed from `uri_or_path` (path or full URL).
+
+  Do not call `Phoenix.LiveView.get_connect_info/2` here — it is only valid inside
+  the owning LiveView's `mount/3`. Pass the URI from `handle_params/3`'s `url`
+  argument, or read `get_connect_info(:uri)` in `mount/3` and pass it in.
+  """
   @spec merge_scoped_params(map(), String.t() | URI.t() | nil) :: map()
   def merge_scoped_params(params, uri_or_path) when is_map(params) do
-    merge_scoped_params(params, uri_or_path, nil)
-  end
-
-  @spec merge_scoped_params(map(), String.t() | URI.t() | nil, Phoenix.LiveView.Socket.t() | nil) ::
-          map()
-  def merge_scoped_params(params, uri_or_path, socket) when is_map(params) do
-    params
-    |> merge_from_uri(uri_or_path)
-    |> merge_from_uri(uri_from_connect(socket))
+    merge_from_uri(params, uri_or_path)
   end
 
   @spec align_current_workspace(Phoenix.LiveView.Socket.t(), map()) :: Phoenix.LiveView.Socket.t()
@@ -51,19 +50,6 @@ defmodule AppPlannerWeb.ScopeFromPath do
         rescue
           _ -> socket
         end
-    end
-  end
-
-  defp uri_from_connect(nil), do: nil
-
-  defp uri_from_connect(socket) do
-    if Phoenix.LiveView.connected?(socket) do
-      case Phoenix.LiveView.get_connect_info(socket, :uri) do
-        %URI{} = u -> u
-        _ -> nil
-      end
-    else
-      nil
     end
   end
 

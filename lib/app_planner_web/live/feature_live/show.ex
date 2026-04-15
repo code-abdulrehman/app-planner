@@ -34,7 +34,7 @@ defmodule AppPlannerWeb.FeatureLive.Show do
             <div>
               <div class="flex items-center gap-3 mb-2">
                 <span class="text-[9px] font-black uppercase text-primary tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
-                  Module
+                  Feature
                 </span>
               </div>
               <h1 class="text-3xl font-black tracking-tight text-base-content leading-tight">
@@ -71,7 +71,7 @@ defmodule AppPlannerWeb.FeatureLive.Show do
                 <.icon name="hero-light-bulb" class="w-3.5 h-3.5 text-base-content/40" />
               </div>
               <h3 class="text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                Why this module?
+                Why this feature?
               </h3>
             </div>
             <div class="bg-base-50/50 p-8 rounded-xl border border-base-200">
